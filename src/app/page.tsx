@@ -1,35 +1,42 @@
 "use client";
 
 import { useMemo } from "react";
-import { ConvergenceHero } from "@/components/dashboard/ConvergenceHero";
+import { Hero } from "@/components/dashboard/Hero";
 import { FindingCard } from "@/components/dashboard/FindingCard";
 import { ExposureTable } from "@/components/dashboard/ExposureTable";
 import { LiquidityPanel } from "@/components/dashboard/LiquidityPanel";
+import { UploadPanel } from "@/components/dashboard/UploadPanel";
+import { rankFindings } from "@/components/dashboard/findings";
 import { useExposure, useLiquidity } from "@/components/dashboard/useDashboardData";
 import { formatDate, formatMoney } from "@/components/dashboard/format";
 import { StatusPanel } from "@/components/ui/StatusPanel";
-
-const NAIVE_SUM = 32_380_000;
+import { EmptyState } from "@/components/ui/EmptyState";
 
 export default function Home() {
   const exposure = useExposure();
   const liquidity = useLiquidity();
 
-  const aurexFinding = useMemo(() => {
-    if (exposure.state.status !== "ready") return undefined;
-    return exposure.state.data.findings.find((f) => f.id === "cross_asset_class");
+  const refreshAll = () => {
+    exposure.reload();
+    liquidity.reload();
+  };
+  const isRefreshing = exposure.state.status === "loading" || liquidity.state.status === "loading";
+
+  const rankedFindings = useMemo(() => {
+    if (exposure.state.status !== "ready") return [];
+    return rankFindings(exposure.state.data.findings);
   }, [exposure.state]);
 
-  const aurexEntity = useMemo(() => {
-    if (exposure.state.status !== "ready") return undefined;
-    return exposure.state.data.entities.find(
-      (e) => e.entityType !== "fund" && /aurex/i.test(e.name),
-    );
-  }, [exposure.state]);
+  const topFinding = rankedFindings[0];
+  const restFindings = rankedFindings.slice(1);
 
-  const concentrationFinding = useMemo(() => {
+  // Naively summing every figure in the document set — funds AND the companies
+  // reached through them — double-counts by construction. Computed live from
+  // whatever entities exist, never a fixed demo number, precisely so it stays wrong
+  // in a way that is honest about being wrong.
+  const naiveSum = useMemo(() => {
     if (exposure.state.status !== "ready") return undefined;
-    return exposure.state.data.findings.find((f) => f.id === "hidden_concentration");
+    return exposure.state.data.entities.reduce((sum, e) => sum + e.directTotal + e.guaranteeNotional, 0);
   }, [exposure.state]);
 
   const asOfChips = useMemo(() => {
@@ -48,14 +55,17 @@ export default function Home() {
 
   const generatedAt =
     exposure.state.status === "ready" ? exposure.state.data.generatedAt : undefined;
-  const rootName = exposure.state.status === "ready" ? exposure.state.data.root : "Whitmore Family Office";
+  const rootName = exposure.state.status === "ready" ? exposure.state.data.root : undefined;
+  const peBookValue = exposure.state.status === "ready" ? exposure.state.data.peBookValue : 0;
+  const totalFindingsCount = rankedFindings.length + (liquidity.state.status === "ready" ? 1 : 0);
+  const isFirstRun = exposure.state.status === "ready" && exposure.state.data.entities.length === 0;
 
   return (
     <main className="page">
       <header className="masthead">
         <div className="masthead__title-group">
           <span className="masthead__kicker">Exposure graph · single family office</span>
-          <h1 className="masthead__title">{rootName}</h1>
+          <h1 className="masthead__title">{rootName ?? "—"}</h1>
           <p className="masthead__subtitle">
             One live answer to &ldquo;what am I actually exposed to?&rdquo; — look-through
             that crosses asset classes, not just fund layers.
@@ -69,122 +79,171 @@ export default function Home() {
             </div>
           ) : null}
           {generatedAt ? <div>Computed {formatDate(generatedAt)}</div> : null}
+          <button
+            type="button"
+            className="masthead__refresh"
+            onClick={refreshAll}
+            disabled={isRefreshing}
+          >
+            <svg className="masthead__refresh-icon" viewBox="0 0 16 16" aria-hidden="true">
+              <path
+                d="M13.5 8a5.5 5.5 0 1 1-1.7-3.98M13.5 2v3.2h-3.2"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            {isRefreshing ? "Refreshing…" : "Refresh"}
+          </button>
         </div>
       </header>
 
-      <section aria-labelledby="headline-claim">
-        {exposure.state.status === "loading" ? (
-          <StatusPanel kind="loading" label="the cross-asset-class finding" />
-        ) : exposure.state.status === "error" ? (
-          <StatusPanel
-            kind="error"
-            label="the exposure graph"
-            message={exposure.state.message}
-            onRetry={exposure.reload}
-          />
-        ) : (
-          <ConvergenceHero finding={aurexFinding} entity={aurexEntity} />
-        )}
-      </section>
-
-      <section aria-labelledby="findings-heading">
+      <section aria-labelledby="upload-heading">
         <div className="section-head">
-          <span className="section-head__index">02</span>
-          <h3 id="findings-heading" className="section-head__title">
-            Supporting findings
+          <span className="section-head__index">00</span>
+          <h3 id="upload-heading" className="section-head__title">
+            Add a document
           </h3>
-          <span className="section-head__note">table stakes, not the differentiator</span>
+          <span className="section-head__note">the engine re-derives everything below on ingest</span>
         </div>
-        {exposure.state.status === "loading" ? (
-          <StatusPanel kind="loading" label="supporting findings" />
-        ) : exposure.state.status === "error" ? (
-          <StatusPanel kind="error" label="findings" message={exposure.state.message} onRetry={exposure.reload} />
-        ) : (
-          <div className="findings-grid">
-            {concentrationFinding ? <FindingCard finding={concentrationFinding} index={1} /> : null}
-            <LiquidityFindingCard />
-          </div>
-        )}
+        <UploadPanel onUploaded={refreshAll} />
       </section>
 
-      <section aria-labelledby="exposure-heading">
-        <div className="section-head">
-          <span className="section-head__index">03</span>
-          <h3 id="exposure-heading" className="section-head__title">
-            Exposure by entity
-          </h3>
-          {exposure.state.status === "ready" ? (
-            <span className="section-head__note">
-              PE book value {formatMoney(exposure.state.data.peBookValue)}
-            </span>
-          ) : null}
-        </div>
-        {exposure.state.status === "loading" ? (
-          <StatusPanel kind="loading" label="entity exposure" />
-        ) : exposure.state.status === "error" ? (
-          <StatusPanel
-            kind="error"
-            label="entity exposure"
-            message={exposure.state.message}
-            onRetry={exposure.reload}
-          />
-        ) : (
-          <ExposureTable entities={exposure.state.data.entities} />
-        )}
-      </section>
+      {isFirstRun ? (
+        <EmptyState
+          title="No documents ingested yet"
+          detail="This view will populate the moment a statement, capital call, or credit schedule is uploaded above — entities get resolved, edges get typed, and findings get derived automatically. There is nothing to fabricate here."
+        />
+      ) : (
+        <>
+          <section aria-labelledby="headline-claim">
+            {exposure.state.status === "loading" ? (
+              <StatusPanel kind="loading" label="the highest-severity finding" />
+            ) : exposure.state.status === "error" ? (
+              <StatusPanel
+                kind="error"
+                label="the exposure graph"
+                message={exposure.state.message}
+                onRetry={exposure.reload}
+              />
+            ) : (
+              <Hero finding={topFinding} entities={exposure.state.data.entities} peBookValue={peBookValue} />
+            )}
+          </section>
 
-      <section aria-labelledby="liquidity-heading">
-        <div className="section-head">
-          <span className="section-head__index">04</span>
-          <h3 id="liquidity-heading" className="section-head__title">
-            Liquidity collision
-          </h3>
-          <span className="section-head__note">vs. Cambridge Associates 3× standard</span>
-        </div>
-        {liquidity.state.status === "loading" ? (
-          <StatusPanel kind="loading" label="liquidity coverage" />
-        ) : liquidity.state.status === "error" ? (
-          <StatusPanel
-            kind="error"
-            label="liquidity coverage"
-            message={liquidity.state.message}
-            onRetry={liquidity.reload}
-          />
-        ) : (
-          <LiquidityPanel data={liquidity.state.data} />
-        )}
-      </section>
+          <section aria-labelledby="findings-heading">
+            <div className="section-head">
+              <span className="section-head__index">02</span>
+              <h3 id="findings-heading" className="section-head__title">
+                {totalFindingsCount > 0 ? `${totalFindingsCount} findings` : "Findings"}
+              </h3>
+              <span className="section-head__note">
+                {topFinding ? "1 featured above" : "ranked by severity, then amount"}
+              </span>
+            </div>
+            {exposure.state.status === "loading" ? (
+              <StatusPanel kind="loading" label="findings" />
+            ) : exposure.state.status === "error" ? (
+              <StatusPanel kind="error" label="findings" message={exposure.state.message} onRetry={exposure.reload} />
+            ) : restFindings.length === 0 && liquidity.state.status !== "ready" ? (
+              <EmptyState
+                title="No other findings"
+                detail="Every finding this ingest run produced is already featured above."
+              />
+            ) : (
+              <div className="findings-grid">
+                {restFindings.map((finding, i) => (
+                  <FindingCard key={finding.id} finding={finding} index={i + 2} />
+                ))}
+                <LiquidityFindingCard index={restFindings.length + 2} />
+              </div>
+            )}
+          </section>
 
-      <footer className="honesty-footer">
-        <div className="honesty-footer__block">
-          <h5>A number that never existed</h5>
-          <p className="honesty-footer__naive">{formatMoney(NAIVE_SUM)}</p>
-          <p>
-            Naively summing every figure in the document set produces this total — but the
-            inputs span multiple as-of dates, so no such balance was ever true at any single
-            moment. Every figure above is instead tagged with the date it actually describes.
-          </p>
-        </div>
-        <div className="honesty-footer__block">
-          <h5>As-of dates in this view</h5>
-          <div className="honesty-footer__dates">
-            {asOfChips.length
-              ? asOfChips.map((d) => (
-                  <span key={d} className="honesty-footer__date">
-                    {formatDate(d)}
-                  </span>
-                ))
-              : "—"}
-          </div>
-          <p>Mixed as-of dates are part of the story, not a bug — treat any single grand total with suspicion.</p>
-        </div>
-      </footer>
+          <section aria-labelledby="exposure-heading">
+            <div className="section-head">
+              <span className="section-head__index">03</span>
+              <h3 id="exposure-heading" className="section-head__title">
+                Exposure by entity
+              </h3>
+              {exposure.state.status === "ready" ? (
+                <span className="section-head__note">
+                  PE book value {formatMoney(exposure.state.data.peBookValue)}
+                </span>
+              ) : null}
+            </div>
+            {exposure.state.status === "loading" ? (
+              <StatusPanel kind="loading" label="entity exposure" />
+            ) : exposure.state.status === "error" ? (
+              <StatusPanel
+                kind="error"
+                label="entity exposure"
+                message={exposure.state.message}
+                onRetry={exposure.reload}
+              />
+            ) : (
+              <ExposureTable entities={exposure.state.data.entities} />
+            )}
+          </section>
+
+          <section aria-labelledby="liquidity-heading">
+            <div className="section-head">
+              <span className="section-head__index">04</span>
+              <h3 id="liquidity-heading" className="section-head__title">
+                Liquidity collision
+              </h3>
+              <span className="section-head__note">vs. Cambridge Associates 3× standard</span>
+            </div>
+            {liquidity.state.status === "loading" ? (
+              <StatusPanel kind="loading" label="liquidity coverage" />
+            ) : liquidity.state.status === "error" ? (
+              <StatusPanel
+                kind="error"
+                label="liquidity coverage"
+                message={liquidity.state.message}
+                onRetry={liquidity.reload}
+              />
+            ) : (
+              <LiquidityPanel data={liquidity.state.data} />
+            )}
+          </section>
+
+          <footer className="honesty-footer">
+            <div className="honesty-footer__block">
+              <h5>A number that never existed</h5>
+              <p className="honesty-footer__naive">{formatMoney(naiveSum)}</p>
+              <p>
+                Naively summing every figure in the document set — funds and the companies
+                reached through them alike — produces this total. But the inputs span multiple
+                as-of dates and double-count by construction, so no such balance was ever true
+                at any single moment. Every figure above is instead tagged with the date it
+                actually describes.
+              </p>
+            </div>
+            <div className="honesty-footer__block">
+              <h5>As-of dates in this view</h5>
+              <div className="honesty-footer__dates">
+                {asOfChips.length
+                  ? asOfChips.map((d) => (
+                      <span key={d} className="honesty-footer__date">
+                        {formatDate(d)}
+                      </span>
+                    ))
+                  : "—"}
+              </div>
+              <p>Mixed as-of dates are part of the story, not a bug — treat any single grand total with suspicion.</p>
+            </div>
+          </footer>
+        </>
+      )}
     </main>
   );
 }
 
 /** Presents the liquidity collision as a finding-shaped card so it reads alongside the others. */
-function LiquidityFindingCard() {
+function LiquidityFindingCard({ index }: { index: number }) {
   const liquidity = useLiquidity();
 
   if (liquidity.state.status === "loading") {
@@ -201,7 +260,7 @@ function LiquidityFindingCard() {
   return (
     <article className="finding-card" aria-labelledby="finding-liquidity-heading">
       <div className="finding-card__top">
-        <span className="finding-card__index">02</span>
+        <span className="finding-card__index">{String(index).padStart(2, "0")}</span>
         <span className="severity-tag severity-tag--high">
           <span className="severity-tag__dot" aria-hidden="true" />
           High

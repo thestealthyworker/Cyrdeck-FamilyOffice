@@ -1,44 +1,105 @@
-import { formatMoney, formatPct } from "@/components/dashboard/format";
+import { formatMoney } from "@/components/dashboard/format";
 import { SourceTag } from "@/components/ui/SourceTag";
-import type { EntityExposure, ExposurePath, Finding } from "@/components/dashboard/types";
+import type { CSSProperties } from "react";
+import type { EdgeKind, EntityExposure, ExposurePath, Finding } from "@/components/dashboard/types";
 
 interface ConvergenceHeroProps {
-  finding: Finding | undefined;
-  entity: EntityExposure | undefined;
+  finding: Finding;
+  entity: EntityExposure;
 }
 
+interface Role {
+  edgeType: EdgeKind;
+  amount: number;
+  parent: string;
+  path: ExposurePath | undefined;
+  color: string;
+}
+
+// Cycled by role index so any number of edge types gets a distinct, semantic-ish color
+// without needing a bespoke CSS class per edge kind.
+const ROLE_PALETTE = [
+  "var(--role-equity)",
+  "var(--role-debt)",
+  "var(--role-guarantee)",
+  "var(--medium)",
+  "var(--high)",
+  "var(--critical)",
+];
+
+const ROLE_HEADING: Partial<Record<EdgeKind, string>> = {
+  holds_equity: "EQUITY — HELD INSIDE",
+  holds_debt: "DEBT — HELD BY",
+  guarantees: "GUARANTEE — WRITTEN BY",
+  owns_property: "PROPERTY — OWNED VIA",
+  manages: "MANAGED BY",
+};
+
+const NODE_WIDTH = 200;
+const NODE_GAP = 30;
+const NODE_TOP = 52;
+const NODE_HEIGHT = 78;
+const TARGET_WIDTH = 260;
+const TARGET_TOP = 350;
+const TARGET_HEIGHT = 92;
+const MARGIN = 10;
+
+// SVG text does not wrap. Legal suffixes overflow the role boxes and add nothing at a
+// glance — the full names are printed in the traversal paths below.
+const short = (name: string) => name.replace(/,?\s+(L\.?P\.?|LLC|Inc\.?|Ltd\.?|Corp\.?)$/i, "");
+
+const parentOf = (path: ExposurePath | undefined, entityName: string): string => {
+  const direct = path?.hops.find((h) => h.to === entityName)?.from;
+  return direct ?? path?.hops.at(-1)?.from ?? "—";
+};
+
+const roleHeading = (edgeType: EdgeKind): string =>
+  ROLE_HEADING[edgeType] ?? edgeType.replace(/_/g, " ").toUpperCase();
+
 /**
- * THE centrepiece. Aurex Data Centers appears in three roles across three asset
- * classes; the guarantee behind the loan traces back to the same fund that holds
- * the equity. The three roles must visually converge on one node — that
- * convergence *is* the finding, legible without narration.
+ * THE centrepiece for cross-asset-class findings: an entity reachable via 2+ distinct
+ * edge types converges N role boxes onto one target node — the convergence *is* the
+ * finding, legible without narration. Every role, amount, name, and path here comes
+ * from `entity.paths` / `entity.byEdgeType`, so this scales from two roles to however
+ * many the graph actually produces — nothing is fixed to exactly three.
  */
 export function ConvergenceHero({ finding, entity }: ConvergenceHeroProps) {
-  const equity = entity?.byEdgeType.holds_equity ?? 459_000;
-  const debt = entity?.byEdgeType.holds_debt ?? 2_000_000;
-  const total = finding?.amount ?? equity + debt;
+  const entityName = entity.name;
+  const edgeTypes = Object.keys(entity.byEdgeType) as EdgeKind[];
 
-  const equityPath = entity?.paths.find((p) => p.hops.some((h) => h.edgeType === "holds_equity"));
-  const debtPath = entity?.paths.find((p) => p.hops.some((h) => h.edgeType === "holds_debt"));
-  const guaranteePath = entity?.paths.find((p) => p.hops.some((h) => h.edgeType === "guarantees"));
+  const roles: Role[] = edgeTypes.map((edgeType, i) => {
+    const path = entity.paths.find((p) => p.hops.some((h) => h.edgeType === edgeType));
+    return {
+      edgeType,
+      amount: entity.byEdgeType[edgeType] ?? 0,
+      parent: parentOf(path, entityName),
+      path,
+      color: ROLE_PALETTE[i % ROLE_PALETTE.length],
+    };
+  });
 
-  const entityName = entity?.name ?? "Aurex Data Centers";
+  const n = Math.max(roles.length, 1);
+  const totalWidth = MARGIN * 2 + n * NODE_WIDTH + (n - 1) * NODE_GAP;
+  const targetCenterX = totalWidth / 2;
+  const targetX = targetCenterX - TARGET_WIDTH / 2;
 
-  // The counterparty that matters is the one immediately above the entity, not the
-  // root the path started from. Taking the first hop would label every role
-  // "Whitmore Family Office" and bury the finding: the point is that the equity
-  // holder and the guarantor are the SAME fund.
-  const parentOf = (path: ExposurePath | undefined) =>
-    path?.hops.find((h) => h.to === entityName)?.from ?? path?.hops.at(-1)?.from;
+  // The insight in this finding class is that the SAME counterparty shows up behind
+  // more than one role — draw the bridge only when the data actually shows that,
+  // never as decoration.
+  const parentGroups = new Map<string, number[]>();
+  roles.forEach((role, i) => {
+    const list = parentGroups.get(role.parent) ?? [];
+    list.push(i);
+    parentGroups.set(role.parent, list);
+  });
+  const sharedParentIndices = Array.from(parentGroups.values()).find((list) => list.length >= 2);
+  const sharedParentName = sharedParentIndices ? roles[sharedParentIndices[0]].parent : undefined;
 
-  const equityHolder = parentOf(equityPath) ?? "Kestrel Ventures Fund III";
-  const guarantor = parentOf(guaranteePath) ?? equityHolder;
-  const lender = parentOf(debtPath) ?? "Whitmore Family Office";
-  const guarantorIsEquityHolder = guarantor === equityHolder;
+  const total = finding.amount;
 
-  // SVG text does not wrap. Legal suffixes overflow the role boxes and add nothing
-  // at a glance — the full names are printed in the traversal paths below.
-  const short = (name: string) => name.replace(/,?\s+(L\.?P\.?|LLC|Inc\.?|Ltd\.?|Corp\.?)$/i, "");
+  const ariaLabel = `Diagram: ${entityName} is reached through ${roles.length} roles — ${roles
+    .map((r) => `${roleHeading(r.edgeType).toLowerCase()} via ${r.parent} (${formatMoney(r.amount)})`)
+    .join("; ")}${sharedParentName ? `. ${sharedParentName} appears behind more than one of these roles.` : ""}`;
 
   return (
     <div className="hero">
@@ -47,112 +108,115 @@ export function ConvergenceHero({ finding, entity }: ConvergenceHeroProps) {
         <h3 id="headline-claim" className="hero__claim">
           Your hedge is your own position.
         </h3>
-        <p className="hero__lede">
-          <strong>{entityName}</strong> appears three times, in three roles, across three
-          asset classes. The guarantee behind its loan is written by the very fund that
-          owns its equity. One credit event hits all three.
-        </p>
+        <p className="hero__lede">{finding.detail}</p>
         <div className="hero__total">
           <span className="hero__total-label">Total single-counterparty exposure</span>
           <span className="hero__total-amount">{formatMoney(total)}</span>
           <span className="hero__total-caption">
-            reported today as diversification across two asset classes
+            {roles.length} traversal paths converge on one entity — reported today as if
+            independent
           </span>
         </div>
-        {finding ? (
-          <div className="hero__sources">
-            {finding.sourceDocuments.map((doc, i) => (
-              <SourceTag key={doc + i} document={doc} asOfDate={finding.asOfDates[i] ?? finding.asOfDates[0]} />
-            ))}
-          </div>
-        ) : null}
+        <div className="hero__sources">
+          {finding.sourceDocuments.map((doc, i) => (
+            <SourceTag key={doc + i} document={doc} asOfDate={finding.asOfDates[i] ?? finding.asOfDates[0]} />
+          ))}
+        </div>
       </div>
 
-      <div className="hero__diagram" role="img" aria-label={`Diagram: ${entityName} is held as equity inside ${equityHolder}, owes ${formatMoney(debt)} on an unsecured direct loan, and that same loan is guaranteed by ${guarantor}${guarantorIsEquityHolder ? " — the very fund whose equity is held" : ""}.`}>
-        <svg viewBox="0 0 660 470" className="convergence-svg" aria-hidden="true">
-          {/* connective lines drawn first, under the nodes */}
-          <path d="M 110 130 C 110 240, 300 285, 325 350" className="convergence-line convergence-line--equity" />
-          <path d="M 330 130 C 330 240, 330 285, 330 350" className="convergence-line convergence-line--debt" />
-          <path d="M 550 130 C 550 240, 360 285, 335 350" className="convergence-line convergence-line--guarantee" />
+      <div className="hero__diagram" role="img" aria-label={ariaLabel}>
+        <svg
+          viewBox={`0 0 ${totalWidth} 470`}
+          className="convergence-svg"
+          aria-hidden="true"
+        >
+          {roles.map((role, i) => {
+            const cx = MARGIN + i * (NODE_WIDTH + NODE_GAP) + NODE_WIDTH / 2;
+            const landingX =
+              n > 1
+                ? targetX + 20 + (i * (TARGET_WIDTH - 40)) / (n - 1)
+                : targetCenterX;
+            const style = { "--role-color": role.color } as CSSProperties;
+            return (
+              <path
+                key={`line-${role.edgeType}-${i}`}
+                d={`M ${cx} ${NODE_TOP + NODE_HEIGHT} C ${cx} 240, ${targetCenterX} 285, ${landingX} ${TARGET_TOP}`}
+                className="convergence-line"
+                style={style}
+              />
+            );
+          })}
 
-          {/* The "same fund" bridge is the insight itself, so it is drawn only when
-              the guarantor really is the equity holder — never as decoration. */}
-          {guarantorIsEquityHolder ? (
+          {sharedParentIndices ? (
             <>
-              <path d="M 110 52 C 210 6, 450 6, 550 52" className="convergence-line convergence-line--bridge" />
-              <text x="330" y="26" textAnchor="middle" className="convergence-bridge-label">
-                SAME FUND
+              <path
+                d={`M ${MARGIN + sharedParentIndices[0] * (NODE_WIDTH + NODE_GAP) + NODE_WIDTH / 2} 52 C ${targetCenterX - 100} 6, ${targetCenterX + 100} 6, ${MARGIN + sharedParentIndices[sharedParentIndices.length - 1] * (NODE_WIDTH + NODE_GAP) + NODE_WIDTH / 2} 52`}
+                className="convergence-line convergence-line--bridge"
+              />
+              <text x={targetCenterX} y="26" textAnchor="middle" className="convergence-bridge-label">
+                SAME COUNTERPARTY
               </text>
             </>
           ) : null}
 
-          {/* role node: equity */}
-          <g className="convergence-node convergence-node--equity">
-            <rect x="10" y="52" width="200" height="78" rx="4" />
-            <text x="26" y="76" className="convergence-node__role">EQUITY — HELD INSIDE</text>
-            <text x="26" y="99" className="convergence-node__label">{short(equityHolder)}</text>
-            <text x="26" y="119" className="convergence-node__amount">{formatMoney(equity)}</text>
-          </g>
+          {roles.map((role, i) => {
+            const x = MARGIN + i * (NODE_WIDTH + NODE_GAP);
+            const style = { "--role-color": role.color } as CSSProperties;
+            return (
+              <g className="convergence-node" style={style} key={`${role.edgeType}-${i}`}>
+                <rect x={x} y={NODE_TOP} width={NODE_WIDTH} height={NODE_HEIGHT} rx="4" />
+                <text x={x + 16} y={NODE_TOP + 24} className="convergence-node__role">
+                  {roleHeading(role.edgeType)}
+                </text>
+                <text x={x + 16} y={NODE_TOP + 47} className="convergence-node__label">
+                  {short(role.parent)}
+                </text>
+                <text x={x + 16} y={NODE_TOP + 67} className="convergence-node__amount">
+                  {formatMoney(role.amount)}
+                </text>
+              </g>
+            );
+          })}
 
-          {/* role node: debt */}
-          <g className="convergence-node convergence-node--debt">
-            <rect x="230" y="52" width="200" height="78" rx="4" />
-            <text x="246" y="76" className="convergence-node__role">DEBT — UNSECURED</text>
-            <text x="246" y="99" className="convergence-node__label">{short(lender)}</text>
-            <text x="246" y="119" className="convergence-node__amount">{formatMoney(debt)}</text>
-          </g>
-
-          {/* role node: guarantee */}
-          <g className="convergence-node convergence-node--guarantee">
-            <rect x="450" y="52" width="200" height="78" rx="4" />
-            <text x="466" y="76" className="convergence-node__role">GUARANTEE — WRITTEN BY</text>
-            <text x="466" y="99" className="convergence-node__label">{short(guarantor)}</text>
-            <text x="466" y="119" className="convergence-node__amount">
-              {guarantorIsEquityHolder ? "↑ same fund as the equity" : formatMoney(entity?.guaranteeNotional ?? 0)}
-            </text>
-          </g>
-
-          {/* convergence node */}
           <g className="convergence-node convergence-node--target">
-            <rect x="200" y="350" width="260" height="92" rx="4" />
-            <text x="330" y="381" textAnchor="middle" className="convergence-node__target-label">
+            <rect x={targetX} y={TARGET_TOP} width={TARGET_WIDTH} height={TARGET_HEIGHT} rx="4" />
+            <text x={targetCenterX} y={TARGET_TOP + 31} textAnchor="middle" className="convergence-node__target-label">
               {short(entityName).toUpperCase()}
             </text>
-            <text x="330" y="406" textAnchor="middle" className="convergence-node__target-sub">
+            <text x={targetCenterX} y={TARGET_TOP + 56} textAnchor="middle" className="convergence-node__target-sub">
               one credit event
             </text>
-            <text x="330" y="428" textAnchor="middle" className="convergence-node__target-amount">
+            <text x={targetCenterX} y={TARGET_TOP + 78} textAnchor="middle" className="convergence-node__target-amount">
               {formatMoney(total)} affected
             </text>
           </g>
         </svg>
 
         <ul className="hero__legend">
-          <li><span className="hero__legend-swatch hero__legend-swatch--equity" />Equity path</li>
-          <li><span className="hero__legend-swatch hero__legend-swatch--debt" />Debt path</li>
-          <li><span className="hero__legend-swatch hero__legend-swatch--guarantee" />Guarantee path</li>
+          {roles.map((role, i) => {
+            const style = { "--role-color": role.color } as CSSProperties;
+            return (
+              <li key={`${role.edgeType}-${i}`}>
+                <span className="hero__legend-swatch" style={style} />
+                {roleHeading(role.edgeType).split("—")[0].trim()} path
+              </li>
+            );
+          })}
         </ul>
       </div>
 
-      {equityPath || debtPath || guaranteePath ? (
+      {roles.length ? (
         <div className="hero__paths">
-          {equityPath ? <PathLine label="Equity" path={equityPath} /> : null}
-          {debtPath ? <PathLine label="Debt" path={debtPath} weight={null} /> : null}
-          {guaranteePath ? <PathLine label="Guarantee" path={guaranteePath} weight={null} /> : null}
+          {roles.map((role, i) =>
+            role.path ? <PathLine key={`${role.edgeType}-${i}`} label={roleHeading(role.edgeType).split("—")[0].trim()} path={role.path} /> : null,
+          )}
         </div>
       ) : null}
     </div>
   );
 }
 
-function PathLine({
-  label,
-  path,
-}: {
-  label: string;
-  path: ExposurePath;
-  weight?: null;
-}) {
+function PathLine({ label, path }: { label: string; path: ExposurePath }) {
   return (
     <div className="hero__path-row">
       <span className="hero__path-role">{label}</span>
@@ -162,7 +226,7 @@ function PathLine({
             {i === 0 ? hop.from : null}
             <span className="hero__path-arrow"> → </span>
             {hop.to}
-            {hop.weightPct ? <span className="hero__path-weight"> ({formatPct(hop.weightPct)})</span> : null}
+            {hop.weightPct ? <span className="hero__path-weight"> ({Math.round(hop.weightPct * 100)}%)</span> : null}
           </span>
         ))}
       </span>
