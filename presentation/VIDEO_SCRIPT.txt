@@ -1,0 +1,152 @@
+================================================================
+CYRDECK EXPOSURE GRAPH - 60 SECOND WALKTHROUGH
+Recording script (plain text / teleprompter)
+================================================================
+
+LIVE URL     https://cyrdeck-familyoffice.vercel.app
+UPLOAD FILE  demo_pack/02_calder_marine_equity_purchase_agreement.pdf
+LENGTH       ~156 words, ~60 seconds at 155 wpm
+
+
+----------------------------------------------------------------
+BEFORE YOU RECORD
+----------------------------------------------------------------
+
+[ ] Confirm Calder Marine still shows ONE edge type.
+    The upload must create a NEW finding, not change an old one.
+    If it already shows two, someone uploaded this file already -
+    see "IF THE STATE IS WRONG" at the bottom.
+
+[ ] Page loaded, scrolled to top, hero fully rendered.
+
+[ ] The Calder PDF visible in a Finder window, positioned so you
+    can drag it straight into the upload panel without hunting.
+
+[ ] Browser zoom ~110%. Bookmarks bar hidden. No other tabs.
+    Notifications off.
+
+[ ] Record at 1440p or higher. The numbers ARE the story - if
+    they are not legible, the video fails.
+
+
+----------------------------------------------------------------
+THE SCRIPT
+----------------------------------------------------------------
+
+
+0:00 - 0:07
+SCREEN: Hero, static. Let it breathe for a beat before speaking.
+
+   "A family office's risk isn't unknown.
+    It's UNAGGREGATED - sitting in twenty documents
+    that nobody reads together."
+
+
+0:07 - 0:20
+SCREEN: Slowly trace the three converging boxes, then the Aurex node.
+
+   "Aurex Data Centers appears three times here.
+    Equity inside a fund.
+    A two-million-dollar unsecured loan.
+    And the guarantee behind that loan - written by the
+    SAME FUND that holds the equity.
+    One credit event hits all three."
+
+
+0:20 - 0:32
+SCREEN: Scroll to upload panel. Drag the Calder PDF in.
+        >>> CUT THE 14-SECOND WAIT IN POST <<<
+
+   "None of that is hardcoded. Watch -
+    I'll drop in a document the system has never seen.
+    It extracts it, resolves the entities,
+    and re-derives the whole graph."
+
+
+0:32 - 0:42
+SCREEN: New Calder finding visible in the findings list. Point at it.
+
+   "A new finding appears on its own.
+    Calder Marine - we already lent to them,
+    now we own equity too.
+    Two asset classes, one counterparty."
+
+
+0:42 - 0:52
+SCREEN: Scroll to liquidity. Then click one source chip to open
+        the real document.
+
+   "Stressed coverage is zero-point-nine-two times
+    against Cambridge's three-times institutional standard.
+    And every figure opens the statement it came from."
+
+
+0:52 - 1:00
+SCREEN: Back to hero, or hold on the open source document.
+
+   "Aleta forecasts your cash.
+    Masttro sees through your funds.
+    Neither crosses asset classes.
+    This does - from documents you already receive."
+
+
+----------------------------------------------------------------
+DELIVERY NOTES
+----------------------------------------------------------------
+
+THE ONE WORD TO LAND IS "SAME".
+   "written by the SAME FUND that holds the equity"
+   Everything before it is setup. Everything after is evidence.
+   If you land one word in sixty seconds, land that one.
+
+SAY "two-million-dollar", NOT "two million dollars".
+   It scans faster and sounds deliberate.
+
+DO NOT SAY "AI" OR "LLM".
+   The extraction is table stakes. The finding is the product.
+   Naming the model invites accuracy questions you don't need
+   in a 60-second video.
+
+THE 14-SECOND INGEST IS YOUR BIGGEST PROBLEM.
+   That is a quarter of your runtime watching a spinner.
+   Do not narrate through it. Best options in order:
+     1. Record continuously, cut the dead time in post.
+     2. Speed-ramp the wait to 2-3 seconds with the
+        processing state still visible.
+     3. Only if you must keep it real-time, fill it with the
+        entity-resolution line - but that costs you the
+        liquidity beat.
+
+
+----------------------------------------------------------------
+IF YOU NEED A SHORTER CUT
+----------------------------------------------------------------
+
+Drop the liquidity beat (0:42 - 0:52) and give the time to the
+upload instead. That lands around 130 words / 52 seconds, which
+is safer if you speed up on camera.
+
+Cost: you lose the Cambridge 3x benchmark, which is your
+strongest external validation. Only trim it if timing is
+genuinely tight.
+
+
+----------------------------------------------------------------
+IF THE STATE IS WRONG
+----------------------------------------------------------------
+
+If Calder already shows two edge types, someone uploaded that
+file. Use this instead:
+
+   demo_pack/01_ridgeline_capital_VI_capital_statement.pdf
+
+And change the 0:32 line to:
+
+   "A new fund lands, and it's holding two companies we
+    already own elsewhere - the concentration deepens the
+    moment the document arrives."
+
+Or reset to the seeded five-document state first. Ask before
+doing that - it rewrites the live database.
+
+================================================================
