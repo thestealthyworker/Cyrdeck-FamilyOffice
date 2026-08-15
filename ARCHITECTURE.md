@@ -217,8 +217,9 @@ of shortfall, walked quarterly against blended base/stress pacing curves.
 
 ## 6. Boilerplate and third-party disclosure
 
-Per `package.json`, the project's `name` field is literally `"scaffold"` — it started as
-an unmodified `create-next-app` output and was never renamed.
+The application started as an unmodified `create-next-app` output — the `package.json`
+`name` field read `"scaffold"` until late in the build, when it was renamed to
+`cyrdeck-familyoffice`. The scaffold was generated, not written.
 
 **Generated / third-party, not ours:**
 
