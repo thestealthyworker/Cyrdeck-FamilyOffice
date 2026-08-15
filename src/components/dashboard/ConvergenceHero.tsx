@@ -108,7 +108,26 @@ export function ConvergenceHero({ finding, entity }: ConvergenceHeroProps) {
         <h3 id="headline-claim" className="hero__claim">
           Your hedge is your own position.
         </h3>
-        <p className="hero__lede">{finding.detail}</p>
+        {/* The generated `detail` is the full audit trail — every path, document, and
+            as-of date. That belongs below, not in the opening line. The lede is composed
+            from the same structured data so it stays true for any entity. */}
+        <p className="hero__lede">
+          <strong>{entityName}</strong> is reached {roles.length} ways:{" "}
+          {roles.map((r, i) => (
+            <span key={`lede-${r.edgeType}-${i}`}>
+              {i > 0 ? (i === roles.length - 1 ? ", and " : ", ") : ""}
+              {roleHeading(r.edgeType).split(" — ")[0].toLowerCase()} via {short(r.parent)}
+            </span>
+          ))}
+          .{" "}
+          {sharedParentName
+            ? `${short(sharedParentName)} stands behind more than one of them — the protection is the same position wearing a different hat. One credit event hits all ${roles.length}.`
+            : `One credit event hits all ${roles.length}.`}
+        </p>
+        <details className="hero__derivation">
+          <summary>Show full derivation</summary>
+          <p>{finding.detail}</p>
+        </details>
         <div className="hero__total">
           <span className="hero__total-label">Total single-counterparty exposure</span>
           <span className="hero__total-amount">{formatMoney(total)}</span>

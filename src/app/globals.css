@@ -318,6 +318,36 @@ section {
   color: var(--ink);
 }
 
+/* Full audit trail, collapsed. Present and one click away, never in the way. */
+.hero__derivation {
+  max-width: 34rem;
+  margin: 0 0 var(--space-md);
+  border-left: 2px solid var(--rule);
+  padding-left: var(--space-sm);
+}
+
+.hero__derivation summary {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  cursor: pointer;
+  transition: color var(--duration-fast) var(--ease-out-expo);
+}
+
+.hero__derivation summary:hover,
+.hero__derivation summary:focus-visible {
+  color: var(--critical);
+}
+
+.hero__derivation p {
+  font-size: 0.82rem;
+  line-height: 1.6;
+  color: var(--ink-faint);
+  margin: var(--space-xs) 0 0;
+}
+
 .hero__total {
   display: flex;
   flex-direction: column;
