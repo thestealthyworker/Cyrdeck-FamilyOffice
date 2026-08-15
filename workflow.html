@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Workflow — Cross-Asset-Class Exposure Engine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#070c14;
+  --ink-2:#0c131f;
+  --panel:#101a29;
+  --line:#1e2d42;
+  --line-2:#2a3d59;
+  --text:#dfe7f2;
+  --dim:#7f92ad;
+  --ext:#3fd0d8;        /* external */
+  --int:#f0a93b;        /* internal */
+  --fail:#ff5f56;       /* failure */
+  --out:#7ee08a;        /* outcome */
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  background:var(--ink);
+  color:var(--text);
+  font-family:'JetBrains Mono',ui-monospace,monospace;
+  font-size:14px;line-height:1.65;
+  background-image:
+    linear-gradient(var(--line) 1px,transparent 1px),
+    linear-gradient(90deg,var(--line) 1px,transparent 1px);
+  background-size:64px 64px;
+  background-position:-1px -1px;
+  padding:0 0 100px;
+}
+body::before{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:radial-gradient(ellipse at 50% 0%,rgba(63,208,216,.09),transparent 55%),
+             radial-gradient(ellipse at 90% 80%,rgba(240,169,59,.06),transparent 50%);
+}
+.wrap{max-width:1180px;margin:0 auto;padding:0 28px;position:relative;z-index:1}
+
+/* ---------- header ---------- */
+header{padding:72px 0 44px;border-bottom:1px solid var(--line-2)}
+.tag{font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:var(--ext);
+     display:flex;align-items:center;gap:12px;margin-bottom:22px}
+.tag::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--ext),transparent)}
+h1{font-family:'Archivo',sans-serif;font-weight:800;font-size:clamp(34px,5.6vw,62px);
+   line-height:.98;letter-spacing:-.02em;margin-bottom:18px}
+h1 em{font-style:normal;color:var(--ext)}
+.sub{color:var(--dim);max-width:66ch;font-size:14px}
+.meta{display:flex;flex-wrap:wrap;gap:26px;margin-top:30px;font-size:11.5px;color:var(--dim)}
+.meta b{color:var(--text);font-weight:500}
+
+/* ---------- sections ---------- */
+section{padding:64px 0;border-bottom:1px solid var(--line)}
+h2{font-family:'Archivo',sans-serif;font-weight:800;font-size:13px;letter-spacing:.2em;
+   text-transform:uppercase;color:var(--dim);margin-bottom:8px}
+.lead{font-family:'Archivo',sans-serif;font-weight:600;font-size:clamp(19px,2.5vw,27px);
+      line-height:1.28;letter-spacing:-.01em;margin-bottom:32px;max-width:34ch}
+
+/* ---------- data kinds ---------- */
+.kinds{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+@media(max-width:840px){.kinds{grid-template-columns:1fr}}
+.kind{border:1px solid var(--line-2);background:var(--panel);padding:24px}
+.kind.ext{border-top:3px solid var(--ext)}
+.kind.int{border-top:3px solid var(--int)}
+.kind h3{font-family:'Archivo',sans-serif;font-size:15px;letter-spacing:.06em;margin-bottom:4px}
+.kind.ext h3{color:var(--ext)} .kind.int h3{color:var(--int)}
+.kind .note{font-size:11.5px;color:var(--dim);margin-bottom:18px}
+.row{display:flex;gap:12px;padding:9px 0;border-top:1px solid var(--line);font-size:12px}
+.row:first-of-type{border-top:none}
+.row .k{flex:0 0 42%;color:var(--text)}
+.row .v{flex:1;color:var(--dim);font-size:11.5px}
+.hot{color:var(--fail)!important}
+
+.axiom{margin-top:26px;border-left:2px solid var(--ext);padding:16px 20px;
+       background:linear-gradient(90deg,rgba(63,208,216,.07),transparent);font-size:13px}
+
+/* ---------- pipeline ---------- */
+.pipe{position:relative}
+.stage{display:grid;grid-template-columns:190px 1fr 190px;gap:22px;align-items:stretch;
+       margin-bottom:16px;opacity:0;animation:rise .55s ease forwards}
+@media(max-width:960px){.stage{grid-template-columns:1fr}}
+@keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.rail{display:flex;flex-direction:column;justify-content:center;gap:6px}
+.rail.r{align-items:flex-start}
+.chip{font-size:10.5px;letter-spacing:.08em;padding:6px 10px;border:1px solid;line-height:1.4}
+.chip.ext{color:var(--ext);border-color:rgba(63,208,216,.4);background:rgba(63,208,216,.06)}
+.chip.int{color:var(--int);border-color:rgba(240,169,59,.4);background:rgba(240,169,59,.06)}
+.chip.none{color:#4a5a72;border-color:var(--line);background:none}
+.box{border:1px solid var(--line-2);background:var(--panel);padding:20px 22px;position:relative}
+.box::before{content:'';position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--line-2)}
+.box.crit::before{background:var(--fail)}
+.box.out::before{background:var(--out)}
+.num{font-family:'Archivo',sans-serif;font-weight:800;font-size:11px;color:var(--ink);
+     background:var(--dim);padding:2px 7px;letter-spacing:.1em}
+.box.crit .num{background:var(--fail)}
+.box.out .num{background:var(--out)}
+.bt{display:flex;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap}
+.bt h4{font-family:'Archivo',sans-serif;font-size:16px;letter-spacing:.03em}
+.crit-flag{font-size:10px;color:var(--fail);border:1px solid rgba(255,95,86,.4);padding:2px 7px;letter-spacing:.08em}
+.box p{font-size:12.5px;color:#b9c6d8;margin-bottom:8px}
+.fail{font-size:11.5px;color:var(--dim);border-top:1px dashed var(--line-2);padding-top:9px;margin-top:11px}
+.fail b{color:var(--fail);font-weight:500;letter-spacing:.05em;font-size:10.5px}
+.spine{text-align:center;color:var(--line-2);font-size:16px;line-height:1;margin:2px 0 14px}
+
+/* ---------- asymmetry table ---------- */
+.asym{margin-top:14px;border:1px solid var(--line-2)}
+.asym div{display:grid;grid-template-columns:1fr 1.4fr 90px;gap:14px;padding:10px 14px;
+          font-size:11.5px;border-top:1px solid var(--line)}
+.asym div:first-child{border-top:none;color:var(--dim);font-size:10px;letter-spacing:.1em}
+.sev{color:var(--fail);text-align:right;font-weight:700}
+
+/* ---------- clocks ---------- */
+.clocks{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+@media(max-width:900px){.clocks{grid-template-columns:1fr}}
+.clock{border:1px solid var(--line-2);background:var(--panel);padding:22px}
+.clock .n{font-family:'Archivo',sans-serif;font-weight:800;font-size:34px;color:var(--line-2);line-height:1}
+.clock h4{font-family:'Archivo',sans-serif;font-size:15px;margin:8px 0 4px;letter-spacing:.04em}
+.clock .trig{font-size:10.5px;color:var(--ext);letter-spacing:.08em;margin-bottom:12px}
+.clock p{font-size:12px;color:#b9c6d8}
+.clock.third{border-color:rgba(240,169,59,.45)}
+.clock.third .n{color:var(--int)}
+.clock.third .trig{color:var(--int)}
+
+/* ---------- trace ---------- */
+.trace{border:1px solid var(--line-2)}
+.tr{display:grid;grid-template-columns:64px 1fr;border-top:1px solid var(--line)}
+.tr:first-child{border-top:none}
+.tr .s{background:var(--ink-2);display:flex;align-items:center;justify-content:center;
+       font-family:'Archivo',sans-serif;font-weight:800;font-size:15px;color:var(--dim);
+       border-right:1px solid var(--line)}
+.tr .c{padding:15px 20px;font-size:12.5px;color:#b9c6d8}
+.tr.hero{background:linear-gradient(90deg,rgba(126,224,138,.07),transparent)}
+.tr.hero .s{color:var(--out)}
+.tr .c b{color:var(--text);font-weight:500}
+.tr .c .num-hl{color:var(--out);font-weight:700}
+
+/* ---------- scope ---------- */
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{text-align:left;font-weight:500;color:var(--dim);font-size:10px;letter-spacing:.12em;
+   text-transform:uppercase;padding:10px 14px;border-bottom:1px solid var(--line-2)}
+td{padding:11px 14px;border-bottom:1px solid var(--line);color:#b9c6d8;vertical-align:top}
+td:first-child{color:var(--text);white-space:nowrap}
+.yes{color:var(--out)} .no{color:var(--dim)}
+.warn{margin-top:22px;border:1px solid rgba(255,95,86,.35);background:rgba(255,95,86,.05);
+      padding:16px 20px;font-size:12.5px}
+.warn b{color:var(--fail)}
+footer{padding-top:44px;color:var(--dim);font-size:11px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="tag">Track 3 · Single Family Office · Workflow Specification</div>
+  <h1>From a document<br>landing in an inbox<br>to <em>a number changing</em></h1>
+  <p class="sub">How external and internal data interact across seven stages, what each stage can get wrong, and what the system finally emits. Companion to PLAN.md and COMPETITIVE_LANDSCAPE.md.</p>
+  <div class="meta">
+    <span>DATE <b>15 Aug 2026</b></span>
+    <span>DEADLINE <b>17:00</b></span>
+    <span>STAGES <b>7</b></span>
+    <span>CLOCKS <b>3</b></span>
+    <span>CRITICAL PATH <b style="color:#ff5f56">Stage ③ Resolution</b></span>
+  </div>
+</header>
+
+<section>
+  <h2>01 — Inventory</h2>
+  <p class="lead">Everything is one of two things. Keeping them straight is most of the architecture.</p>
+  <div class="kinds">
+    <div class="kind ext">
+      <h3>EXTERNAL</h3>
+      <div class="note">Arrives from outside. Episodic, untrusted, uncontrolled.</div>
+      <div class="row"><span class="k">Fund capital statements</span><span class="v">Quarterly · 45–75 day lag</span></div>
+      <div class="row"><span class="k hot">Capital call notices</span><span class="v">Irregular · <b style="color:#ff5f56">10-day fuse</b></span></div>
+      <div class="row"><span class="k">Distribution notices</span><span class="v">Irregular</span></div>
+      <div class="row"><span class="k">Property appraisals</span><span class="v">Annual · often stalest data</span></div>
+      <div class="row"><span class="k">Loan / servicer schedules</span><span class="v">Monthly–quarterly · covenants</span></div>
+      <div class="row"><span class="k">Custody statements</span><span class="v">The liquid book — the denominator</span></div>
+      <div class="row"><span class="k">Market prices</span><span class="v">Continuous · moves value with no doc</span></div>
+      <div class="row"><span class="k">LLM API</span><span class="v">Hard dependency · plan for failure</span></div>
+    </div>
+    <div class="kind int">
+      <h3>INTERNAL</h3>
+      <div class="note">State you own. Cumulative, curated, compounding.</div>
+      <div class="row"><span class="k">Entity graph</span><span class="v">Nodes + typed edges — the product</span></div>
+      <div class="row"><span class="k">Alias corpus</span><span class="v">The moat · grows per document</span></div>
+      <div class="row"><span class="k">Commitment register</span><span class="v">Total / drawn / undrawn · notice periods</span></div>
+      <div class="row"><span class="k">Policy thresholds</span><span class="v">Coverage 3× · concentration · staleness</span></div>
+      <div class="row"><span class="k">Confidence calibration</span><span class="v">Trust per GP, per field</span></div>
+      <div class="row"><span class="k">Analyst overrides</span><span class="v">Corrections · confirmed merges</span></div>
+    </div>
+  </div>
+  <div class="axiom">
+    External data is <b>episodic and untrusted</b>. Internal state is <b>cumulative and curated</b>. Every arriving document is a <em style="color:var(--ext);font-style:normal">claim to be reconciled</em> against what you already know — never a row to be appended.
+  </div>
+</section>
+
+<section>
+  <h2>02 — The pipeline</h2>
+  <p class="lead">Seven stages. External enters left, internal state sits right, and two stages write back.</p>
+  <div class="pipe">
+
+    <div class="stage" style="animation-delay:.02s">
+      <div class="rail"><span class="chip ext">▸ document file</span></div>
+      <div class="box">
+        <div class="bt"><span class="num">01</span><h4>ARRIVAL</h4></div>
+        <p>Store the original, classify <b>doc_type</b>, extract <b>as_of_date</b>, dedup against the registry.</p>
+        <p style="color:var(--ext)">Classify a <b>capital call notice</b> separately from a statement. A statement updates your picture. A notice starts a clock.</p>
+        <div class="fail"><b>FAILS →</b> duplicate re-send · scanned image, no text layer · password-protected · unseen format</div>
+      </div>
+      <div class="rail r"><span class="chip int">document registry ◂▸</span></div>
+    </div>
+    <div class="spine">│</div>
+
+    <div class="stage" style="animation-delay:.08s">
+      <div class="rail"><span class="chip ext">▸ document text</span><span class="chip ext">▸ LLM API</span></div>
+      <div class="box">
+        <div class="bt"><span class="num">02</span><h4>EXTRACTION</h4></div>
+        <p>One structured-output call per document → typed facts, each carrying <b>as_of_date</b> and <b>confidence</b>. Emits unresolved entity name strings.</p>
+        <p style="color:var(--int)">Map to <b>canonical fields, never raw labels</b>. "Undrawn balance" (Kestrel) and "remaining unfunded commitment" (Meridian) are the same concept.</p>
+        <div class="fail"><b>FAILS →</b> hallucinated or transposed figure · second worksheet missed · vocabulary drift between GPs</div>
+      </div>
+      <div class="rail r"><span class="chip int">◂ doc-type schema</span><span class="chip int">◂ per-GP format memory</span></div>
+    </div>
+    <div class="spine">│</div>
+
+    <div class="stage" style="animation-delay:.14s">
+      <div class="rail"><span class="chip ext">▸ LLM API</span></div>
+      <div class="box crit">
+        <div class="bt"><span class="num">03</span><h4>RESOLUTION</h4><span class="crit-flag">CRITICAL PATH</span></div>
+        <p>One call over all extracted names — <em>"which of these refer to the same real-world entity?"</em> — checked against known aliases first. Writes new aliases back.</p>
+        <p><b>This is where the product is won or lost.</b> The two failure modes are not symmetrical:</p>
+        <div class="asym">
+          <div><span>FAILURE</span><span>EFFECT</span><span style="text-align:right">SEVERITY</span></div>
+          <div><span>False split<br><span style="color:var(--dim)">"Vertexa, Inc." ≠ "Vertexa Inc"</span></span><span>Finding silently disappears. You under-report risk.</span><span class="sev" style="color:var(--int)">BAD</span></div>
+          <div><span>False merge<br><span style="color:var(--dim)">two real companies combined</span></span><span>You report a concentration that <b>doesn't exist</b>. Someone may act on it.</span><span class="sev">WORSE</span></div>
+        </div>
+        <div class="fail" style="border-top-color:rgba(255,95,86,.3)"><b>MITIGATE →</b> human confirmation for any merge above a materiality threshold · permanent manual alias override</div>
+      </div>
+      <div class="rail r"><span class="chip int">◂▸ alias corpus</span><span class="chip int">◂ existing nodes</span></div>
+    </div>
+    <div class="spine">│</div>
+
+    <div class="stage" style="animation-delay:.20s">
+      <div class="rail"><span class="chip none">— none —</span></div>
+      <div class="box">
+        <div class="bt"><span class="num">04</span><h4>GRAPH WRITE</h4></div>
+        <p>Typed edges: <b>holds_equity · holds_debt · guarantees · owns_property · manages</b> — each with weight, value, as_of_date, confidence, source_document_id.</p>
+        <p style="color:var(--int)"><b>Append, never overwrite.</b> A new statement adds a newer-dated edge. That buys you history, "what changed", and provenance for every number on screen.</p>
+        <div class="fail"><b>FAILS →</b> same holding extracted twice → double counting. Enforce idempotency on <b>(source_document, entity, as_of_date)</b></div>
+      </div>
+      <div class="rail r"><span class="chip int">▸ entities + edges</span></div>
+    </div>
+    <div class="spine">│</div>
+
+    <div class="stage" style="animation-delay:.26s">
+      <div class="rail"><span class="chip ext">▸ market prices</span></div>
+      <div class="box">
+        <div class="bt"><span class="num">05</span><h4>TRAVERSAL &amp; COMPUTE</h4></div>
+        <p><b>Look-through:</b> for each entity, sum over all inbound paths from the family office root — <b style="color:var(--ext)">Σ (Π edge weights) × leaf value</b> — <b>grouped by edge_type</b>, so equity, debt and guarantee exposure to one company surface together. This is the whole bet.</p>
+        <p>Then: concentration vs thresholds · coverage ratio base &amp; stressed vs Cambridge 3× · staleness in days since as_of_date.</p>
+        <div class="fail"><b>FAILS →</b> double counting · circular guarantee paths (cap traversal depth) · silently mixing as-of dates. <b style="color:var(--int)">Always surface the date spread, never hide it.</b></div>
+      </div>
+      <div class="rail r"><span class="chip int">◂ graph</span><span class="chip int">◂ thresholds</span></div>
+    </div>
+    <div class="spine">│</div>
+
+    <div class="stage" style="animation-delay:.32s">
+      <div class="rail"><span class="chip none">— none —</span></div>
+      <div class="box out">
+        <div class="bt"><span class="num">06</span><h4>OUTCOME</h4></div>
+        <p>Five things, and only five:</p>
+        <p><b style="color:var(--out)">1 · The coverage ratio.</b> One number, always current. <b>0.92× vs 3.00× standard</b>.<br>
+        <b style="color:var(--out)">2 · Ranked findings</b> by severity, in plain language.<br>
+        <b style="color:var(--out)">3 · Change alerts</b> — fired when a threshold is <em>crossed</em>, not on every recompute. Alert on the transition or you train people to ignore you.<br>
+        <b style="color:var(--out)">4 · Provenance</b> — every figure links to source document and date. An unauditable number is worthless in a risk tool.<br>
+        <b style="color:var(--out)">5 · The review queue</b> — low-confidence extractions and proposed merges awaiting a human.</p>
+      </div>
+      <div class="rail r"><span class="chip int">▸ findings · ratio · alerts</span></div>
+    </div>
+    <div class="spine">│</div>
+
+    <div class="stage" style="animation-delay:.38s">
+      <div class="rail"><span class="chip ext">▸ analyst judgement</span></div>
+      <div class="box">
+        <div class="bt"><span class="num">07</span><h4>FEEDBACK — where the moat forms</h4></div>
+        <p>Analyst confirms, corrects, or rejects. Each action writes back to the alias corpus and confidence calibration.</p>
+        <p style="color:var(--int)">The system is measurably better on document #500 than on #5 — per GP, and across clients. <b>This is the step that makes the corpus, not the algorithm, the defensible asset.</b></p>
+      </div>
+      <div class="rail r"><span class="chip int">▸ alias corpus</span><span class="chip int">▸ calibration</span></div>
+    </div>
+
+  </div>
+</section>
+
+<section>
+  <h2>03 — Three clocks</h2>
+  <p class="lead">The same pipeline runs on three rhythms. Design for all three or it feels broken.</p>
+  <div class="clocks">
+    <div class="clock">
+      <div class="n">01</div>
+      <h4>QUARTERLY</h4>
+      <div class="trig">▸ STATEMENTS ARRIVE IN BATCH</div>
+      <p>45–75 days stale on arrival. Full pipeline, recompute everything.</p>
+      <p style="color:var(--dim);margin-top:10px">“Your picture has been updated. Three things changed.”</p>
+    </div>
+    <div class="clock">
+      <div class="n">02</div>
+      <h4>EVENT</h4>
+      <div class="trig">▸ CAPITAL CALL NOTICE · 10-DAY FUSE</div>
+      <p>Fast path: update the commitment, recompute coverage immediately.</p>
+      <p style="color:var(--dim);margin-top:10px">“This call takes you to 0.71×. Here's what you'd have to sell.”</p>
+    </div>
+    <div class="clock third">
+      <div class="n">03</div>
+      <h4>CONTINUOUS</h4>
+      <div class="trig">▸ NOTHING ARRIVES · MARKETS MOVE</div>
+      <p>Re-shock the liquid book only. The ratio drifts with no document at all.</p>
+      <p style="color:var(--int);margin-top:10px">The clock people miss. A system that only recalculates on document arrival is blind between quarters — exactly when a drawdown happens.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>04 — Worked example</h2>
+  <p class="lead">The Aurex finding, traced through all seven stages.</p>
+  <div class="trace">
+    <div class="tr"><div class="s">01</div><div class="c">Two documents arrive from <b>two different counterparties</b>: Kestrel LP report (as-of 31-Mar) and Blackfin loan schedule (as-of 30-Jun). Different senders, different formats, <b>91 days apart</b>.</div></div>
+    <div class="tr"><div class="s">02</div><div class="c">From Kestrel — equity holding, <b>“Aurex Data Centers, Inc.”</b>, 15% of $3,060,000, plus a prose “Sponsor Support” note about unsecured guarantees. From Blackfin <b>sheet 2</b> — loan BF-2025-002, $2,000,000, unsecured, <b>“guarantee from lead sponsor (Kestrel Ventures Fund III LP)”</b>.</div></div>
+    <div class="tr"><div class="s">03</div><div class="c">Resolver unifies the two Aurex references into one node. <b>And</b> resolves “Kestrel Ventures Fund III LP” in Blackfin's text to the <b>existing Kestrel fund node</b> — a cross-document, cross-counterparty link.</div></div>
+    <div class="tr"><div class="s">04</div><div class="c">Three edges written: <b>holds_equity</b> (FO→Kestrel→Aurex) · <b>holds_debt</b> (FO→Aurex, $2,000,000, unsecured) · <b>guarantees</b> (Kestrel→Aurex debt).</div></div>
+    <div class="tr"><div class="s">05</div><div class="c">Traversal groups all three by entity: total Aurex exposure <b class="num-hl">$2,459,000</b>. Then detects the guarantor node is <em>itself</em> a node the family office holds equity in — correlated credit support.</div></div>
+    <div class="tr hero"><div class="s">06</div><div class="c"><b>Finding emitted:</b> “<b class="num-hl">$2,459,000</b> exposure to Aurex across two asset classes. The guarantee backing the unsecured $2M loan is written by Kestrel Ventures Fund III — <b>the same fund you own the equity through</b>. One credit event impairs the equity, leaves the loan unsecured, and weakens its only credit support.” Provenance: 2 documents, 3 extracted facts.</div></div>
+    <div class="tr"><div class="s">07</div><div class="c">Analyst confirms. <b>Kestrel Ventures Fund III LP ↔ Kestrel Ventures Fund III, L.P.</b> enters the alias corpus permanently.</div></div>
+  </div>
+  <div class="axiom" style="border-left-color:var(--out);background:linear-gradient(90deg,rgba(126,224,138,.07),transparent)">
+    What this required: two documents, two counterparties, 91 days apart, one fact buried on a <b>second worksheet</b> and one in a <b>prose footnote</b> — connected through a typed edge that isn't a holding at all. No table produces this. No fund-layer look-through produces this.
+  </div>
+</section>
+
+<section>
+  <h2>05 — Scope by 17:00</h2>
+  <p class="lead">What ships today, and what is explicitly deferred.</p>
+  <table>
+    <thead><tr><th>Stage</th><th>MVP today</th><th>Deferred</th></tr></thead>
+    <tbody>
+      <tr><td>① Arrival</td><td class="yes">Drag-drop, 5 known archetypes</td><td class="no">Email forwarding, OCR, arbitrary formats</td></tr>
+      <tr><td>② Extraction</td><td class="yes">One LLM call/doc, confidence + as_of</td><td class="no">Per-GP format memory, multi-page tables</td></tr>
+      <tr><td>③ Resolution</td><td class="yes">One LLM call + manual override</td><td class="no">Merge confirmation UI, materiality gating</td></tr>
+      <tr><td>④ Graph write</td><td class="yes">Typed append-only edges</td><td class="no">Full temporal history / diffing</td></tr>
+      <tr><td>⑤ Compute</td><td class="yes">Look-through by edge_type, coverage vs 3×, staleness</td><td class="no">Live market data — use static shocks</td></tr>
+      <tr><td>⑥ Outcome</td><td class="yes">Ratio, 3 findings, provenance links</td><td class="no">Alerting, review queue UI</td></tr>
+      <tr><td>⑦ Feedback</td><td class="yes">Manual alias override only</td><td class="no">Calibration learning</td></tr>
+    </tbody>
+  </table>
+  <div class="warn">
+    <b>DO NOT SKIP IN THE MVP →</b> <b style="color:var(--text)">confidence + as_of_date on every value</b> (④) · <b style="color:var(--text)">grouping exposure by edge_type</b> (⑤) · <b style="color:var(--text)">provenance links</b> (⑥). Those three are what make it a risk system rather than a demo.
+  </div>
+</section>
+
+<section style="border-bottom:none">
+  <h2>06 — External dependency failure</h2>
+  <p class="lead">What breaks when the outside world stops cooperating.</p>
+  <table>
+    <thead><tr><th>Fails</th><th>Effect</th><th>Mitigation</th></tr></thead>
+    <tbody>
+      <tr><td>LLM API down / rate-limited</td><td>No extraction</td><td>Queue as <b>pending</b>, retry. Pre-seeded fixtures mean <b class="yes">the demo still runs</b></td></tr>
+      <tr><td>Malformed document</td><td>One doc fails</td><td>Fail the document, never the batch. Show as <b>needs_review</b></td></tr>
+      <tr><td>Market data unavailable</td><td>Can't stress the liquid book</td><td>Static shock assumptions — the MVP does this anyway</td></tr>
+      <tr><td>Supabase unreachable</td><td>Total outage</td><td>Out of scope for a one-day MVP. Note it in the architecture summary</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<footer>
+  <span>CybrDeck Hackathon · Track 3 · Single Family Office</span>
+  <span>WORKFLOW v1 · 15 Aug 2026</span>
+</footer>
+
+</div>
+</body>
+</html>

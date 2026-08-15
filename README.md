@@ -1,30 +1,46 @@
 # Cyrdeck-FamilyOffice
 
-**Unified risk tracking for illiquid, bespoke portfolios — no more manual spreadsheets.**
+**Cross-asset-class exposure: the risk that lives between the silos.**
 
-## Problem
+Built for the CybrDeck Hackathon — Track 3: Single Family Office.
 
-Single family offices manage wealth that doesn't fit into standard portfolio tools: private equity stakes, direct real estate holdings, private debt, and other illiquid assets. Unlike public securities, these positions don't come with clean, standardized feeds — they're reported through bespoke, inconsistent documents (capital call notices, GP quarterly reports, appraisals, loan schedules) that arrive in whatever format the counterparty happens to use.
+## The problem
 
-Today, consolidating this into a coherent risk picture is a manual process: someone reads each report, re-keys the figures into a spreadsheet, and reconciles it against prior periods by hand. This is slow, error-prone, and doesn't scale as the number of holdings and counterparties grows. It also means risk exposure — concentration, valuation drift, liquidity mismatches — is only ever visible after the fact, if at all.
+A family office's risk isn't unknown — it's **unaggregated**. Everything needed to understand it is already written down, just spread across twenty documents, twelve formats, and nine counterparties that nobody reads together. Most family offices still run private-market administration on spreadsheets across dozens of funds, while alternatives have grown to ~45% of the average portfolio. NAVs lag 45–75 days behind, so every number on file is stale and from a different date.
 
-## What Cyrdeck-FamilyOffice Does
+Full problem framing, sourcing, and the failure mode this produces: [`PLAN.md`](./PLAN.md).
 
-Cyrdeck-FamilyOffice ingests bespoke, unstructured reporting on illiquid private assets, real estate, and private debt, and consolidates it into a single, unified risk-tracking view — replacing the manual spreadsheet workflow with something structured, current, and auditable.
+## What this builds
 
-Core goals:
+You forward the statements you already receive, and the system maintains one live answer to *"what am I actually exposed to?"* Documents arrive → get extracted → get cross-checked against an **entity graph** → the risk number changes.
 
-- **Ingest bespoke documents** — parse and extract structured data from varied, non-standardized reports (GP letters, capital account statements, appraisals, loan documents) rather than requiring counterparties to conform to a fixed format.
-- **Consolidate across asset classes** — bring private equity, direct real estate, and private debt positions into one data model instead of siloed trackers.
-- **Unify risk tracking** — surface concentration, valuation, and liquidity risk across the whole portfolio in one place, kept current as new reports arrive.
-- **Eliminate manual re-keying** — remove the spreadsheet-based reconciliation step that is currently the bottleneck and the primary source of error.
+The headline claim: **look-through that crosses asset classes, not just fund layers.** Conventional look-through handles fund-of-funds and feeder structures — equity wrappers inside equity wrappers. It can't represent a direct loan and a fund holding as two edges to the *same entity*, because asset-class silos are load-bearing in those data models. That's the gap this fills — see the Aurex Data Centers finding in [`PLAN.md`](./PLAN.md#2-what-we-build-and-the-seam-we-own) for the concrete example (equity + unsecured loan + guarantee, all tracing back to one counterparty).
+
+Competitive positioning against existing players (Aleta, Masttro) is in [`COMPETITIVE_LANDSCAPE.md`](./COMPETITIVE_LANDSCAPE.md).
+
+## Architecture
+
+```
+Forward/upload → Extract → RESOLVE ENTITIES → Graph → Traverse → Findings
+                                 ↑
+                     this is the whole product
+```
+
+Next.js + TypeScript on Vercel · Supabase Postgres + Storage · LLM structured extraction.
+
+Schema, the three load-bearing modeling decisions (typed edges, guarantees as first-class edges, mandatory `as_of_date` + `confidence`), and the entity-resolution approach are documented in [`PLAN.md`](./PLAN.md#3-architecture).
+
+## Repo contents
+
+| Path | What it is |
+|---|---|
+| [`PLAN.md`](./PLAN.md) | Full build plan: problem, architecture, schema, build timeline, demo script, risks |
+| [`COMPETITIVE_LANDSCAPE.md`](./COMPETITIVE_LANDSCAPE.md) | Positioning against existing family-office tooling |
+| [`WORKFLOW.md`](./WORKFLOW.md) / [`workflow.html`](./workflow.html) | Working process notes |
+| [`sample_data/`](./sample_data) | Five synthetic fixture documents (five formats, five as-of dates) engineered to carry the demo findings, plus `DATA_DICTIONARY.md` (gold-truth values) and `check_math.py` (verification script) |
+| [`exposure_graph_pitch.pptx`](./exposure_graph_pitch.pptx) | Pitch deck |
+| [`images/`](./images) | Reference photos from the event |
 
 ## Status
 
-Early-stage — this repository is being scaffolded as a build for the Single Family Office track. Architecture, tech stack, and implementation details to follow.
-
-## Context
-
-Originating from the "Problem Statement Reveal" track selection:
-
-> **Track 3: Single Family Office** — Consolidate illiquid private assets, real estate, and private debt from bespoke reports into unified risk tracking — no more manual spreadsheets.
+Planning complete, build in progress. Declared simplifications for the hackathon scope (no auth, no multi-tenancy, single hardcoded family office, five fixture archetypes) are listed in [`PLAN.md`](./PLAN.md#4-build-plan--1029-am--500-pm-65h).
