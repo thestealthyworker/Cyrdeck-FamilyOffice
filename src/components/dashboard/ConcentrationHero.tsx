@@ -6,6 +6,7 @@ interface ConcentrationHeroProps {
   finding: Finding;
   entity: EntityExposure | undefined;
   peBookValue: number;
+  documentIdByFilename?: Map<string, string>;
 }
 
 /**
@@ -14,7 +15,7 @@ interface ConcentrationHeroProps {
  * laid side by side and summed against the PE book. Every bar, percentage, and fund
  * name below comes from `entity.paths`; nothing is a fixed three-role diagram.
  */
-export function ConcentrationHero({ finding, entity, peBookValue }: ConcentrationHeroProps) {
+export function ConcentrationHero({ finding, entity, peBookValue, documentIdByFilename }: ConcentrationHeroProps) {
   const entityName = entity?.name ?? finding.entities[0] ?? "—";
   const pctOfBook = peBookValue > 0 ? finding.amount / peBookValue : 0;
   const paths = entity?.paths ?? [];
@@ -38,7 +39,12 @@ export function ConcentrationHero({ finding, entity, peBookValue }: Concentratio
         </div>
         <div className="hero__sources">
           {finding.sourceDocuments.map((doc, i) => (
-            <SourceTag key={doc + i} document={doc} asOfDate={finding.asOfDates[i] ?? finding.asOfDates[0]} />
+            <SourceTag
+              key={doc + i}
+              document={doc}
+              asOfDate={finding.asOfDates[i] ?? finding.asOfDates[0]}
+              documentId={documentIdByFilename?.get(doc)}
+            />
           ))}
         </div>
       </div>
@@ -68,7 +74,12 @@ export function ConcentrationHero({ finding, entity, peBookValue }: Concentratio
               </div>
               <div className="concentration-bar__foot">
                 <span className="concentration-bar__amount">{formatMoney(lastHop?.value ?? 0)}</span>
-                <SourceTag document={path.sourceDocument} asOfDate={path.asOfDate} confidence={path.confidence} />
+                <SourceTag
+                  document={path.sourceDocument}
+                  asOfDate={path.asOfDate}
+                  confidence={path.confidence}
+                  documentId={path.sourceDocument ? documentIdByFilename?.get(path.sourceDocument) : undefined}
+                />
               </div>
             </div>
           );

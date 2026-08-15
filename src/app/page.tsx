@@ -6,8 +6,10 @@ import { FindingCard } from "@/components/dashboard/FindingCard";
 import { ExposureTable } from "@/components/dashboard/ExposureTable";
 import { LiquidityPanel } from "@/components/dashboard/LiquidityPanel";
 import { UploadPanel } from "@/components/dashboard/UploadPanel";
+import { DocumentsPanel } from "@/components/dashboard/DocumentsPanel";
 import { rankFindings } from "@/components/dashboard/findings";
 import { useExposure, useLiquidity } from "@/components/dashboard/useDashboardData";
+import { useDocuments } from "@/components/dashboard/useDocuments";
 import { formatDate, formatMoney } from "@/components/dashboard/format";
 import { StatusPanel } from "@/components/ui/StatusPanel";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -15,10 +17,12 @@ import { EmptyState } from "@/components/ui/EmptyState";
 export default function Home() {
   const exposure = useExposure();
   const liquidity = useLiquidity();
+  const documents = useDocuments();
 
   const refreshAll = () => {
     exposure.reload();
     liquidity.reload();
+    documents.reload();
   };
   const isRefreshing = exposure.state.status === "loading" || liquidity.state.status === "loading";
 
@@ -133,7 +137,12 @@ export default function Home() {
                 onRetry={exposure.reload}
               />
             ) : (
-              <Hero finding={topFinding} entities={exposure.state.data.entities} peBookValue={peBookValue} />
+              <Hero
+                finding={topFinding}
+                entities={exposure.state.data.entities}
+                peBookValue={peBookValue}
+                documentIdByFilename={documents.documentIdByFilename}
+              />
             )}
           </section>
 
@@ -159,7 +168,12 @@ export default function Home() {
             ) : (
               <div className="findings-grid">
                 {restFindings.map((finding, i) => (
-                  <FindingCard key={finding.id} finding={finding} index={i + 2} />
+                  <FindingCard
+                    key={finding.id}
+                    finding={finding}
+                    index={i + 2}
+                    documentIdByFilename={documents.documentIdByFilename}
+                  />
                 ))}
                 <LiquidityFindingCard index={restFindings.length + 2} />
               </div>
@@ -188,7 +202,10 @@ export default function Home() {
                 onRetry={exposure.reload}
               />
             ) : (
-              <ExposureTable entities={exposure.state.data.entities} />
+              <ExposureTable
+                entities={exposure.state.data.entities}
+                documentIdByFilename={documents.documentIdByFilename}
+              />
             )}
           </section>
 
@@ -211,6 +228,30 @@ export default function Home() {
               />
             ) : (
               <LiquidityPanel data={liquidity.state.data} />
+            )}
+          </section>
+
+          <section aria-labelledby="documents-heading">
+            <div className="section-head">
+              <span className="section-head__index">05</span>
+              <h3 id="documents-heading" className="section-head__title">
+                Documents
+              </h3>
+              <span className="section-head__note">
+                what the system has actually ingested — click any row to open the source
+              </span>
+            </div>
+            {documents.state.status === "loading" ? (
+              <StatusPanel kind="loading" label="ingested documents" />
+            ) : documents.state.status === "error" ? (
+              <StatusPanel
+                kind="error"
+                label="ingested documents"
+                message={documents.state.message}
+                onRetry={documents.reload}
+              />
+            ) : (
+              <DocumentsPanel documents={documents.state.data} />
             )}
           </section>
 

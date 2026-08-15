@@ -6,6 +6,7 @@ import type { EdgeKind, EntityExposure, ExposurePath, Finding } from "@/componen
 interface ConvergenceHeroProps {
   finding: Finding;
   entity: EntityExposure;
+  documentIdByFilename?: Map<string, string>;
 }
 
 interface Role {
@@ -63,7 +64,7 @@ const roleHeading = (edgeType: EdgeKind): string =>
  * from `entity.paths` / `entity.byEdgeType`, so this scales from two roles to however
  * many the graph actually produces — nothing is fixed to exactly three.
  */
-export function ConvergenceHero({ finding, entity }: ConvergenceHeroProps) {
+export function ConvergenceHero({ finding, entity, documentIdByFilename }: ConvergenceHeroProps) {
   const entityName = entity.name;
   const edgeTypes = Object.keys(entity.byEdgeType) as EdgeKind[];
 
@@ -138,7 +139,12 @@ export function ConvergenceHero({ finding, entity }: ConvergenceHeroProps) {
         </div>
         <div className="hero__sources">
           {finding.sourceDocuments.map((doc, i) => (
-            <SourceTag key={doc + i} document={doc} asOfDate={finding.asOfDates[i] ?? finding.asOfDates[0]} />
+            <SourceTag
+              key={doc + i}
+              document={doc}
+              asOfDate={finding.asOfDates[i] ?? finding.asOfDates[0]}
+              documentId={documentIdByFilename?.get(doc)}
+            />
           ))}
         </div>
       </div>
@@ -227,7 +233,14 @@ export function ConvergenceHero({ finding, entity }: ConvergenceHeroProps) {
       {roles.length ? (
         <div className="hero__paths">
           {roles.map((role, i) =>
-            role.path ? <PathLine key={`${role.edgeType}-${i}`} label={roleHeading(role.edgeType).split("—")[0].trim()} path={role.path} /> : null,
+            role.path ? (
+              <PathLine
+                key={`${role.edgeType}-${i}`}
+                label={roleHeading(role.edgeType).split("—")[0].trim()}
+                path={role.path}
+                documentId={role.path.sourceDocument ? documentIdByFilename?.get(role.path.sourceDocument) : undefined}
+              />
+            ) : null,
           )}
         </div>
       ) : null}
@@ -235,7 +248,7 @@ export function ConvergenceHero({ finding, entity }: ConvergenceHeroProps) {
   );
 }
 
-function PathLine({ label, path }: { label: string; path: ExposurePath }) {
+function PathLine({ label, path, documentId }: { label: string; path: ExposurePath; documentId?: string }) {
   return (
     <div className="hero__path-row">
       <span className="hero__path-role">{label}</span>
@@ -249,7 +262,7 @@ function PathLine({ label, path }: { label: string; path: ExposurePath }) {
           </span>
         ))}
       </span>
-      <SourceTag document={path.sourceDocument} asOfDate={path.asOfDate} confidence={path.confidence} />
+      <SourceTag document={path.sourceDocument} asOfDate={path.asOfDate} confidence={path.confidence} documentId={documentId} />
     </div>
   );
 }

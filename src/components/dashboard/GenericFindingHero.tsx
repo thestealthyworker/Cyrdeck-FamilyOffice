@@ -5,6 +5,7 @@ import type { Finding } from "@/components/dashboard/types";
 
 interface GenericFindingHeroProps {
   finding: Finding;
+  documentIdByFilename?: Map<string, string>;
 }
 
 /**
@@ -13,7 +14,7 @@ interface GenericFindingHeroProps {
  * Entirely driven by the finding payload — headline, detail, amount, sources — with
  * no invented narrative.
  */
-export function GenericFindingHero({ finding }: GenericFindingHeroProps) {
+export function GenericFindingHero({ finding, documentIdByFilename }: GenericFindingHeroProps) {
   return (
     <div className="hero hero--generic">
       <div className="hero__narrative">
@@ -30,7 +31,12 @@ export function GenericFindingHero({ finding }: GenericFindingHeroProps) {
         </div>
         <div className="hero__sources">
           {finding.sourceDocuments.map((doc, i) => (
-            <SourceTag key={doc + i} document={doc} asOfDate={finding.asOfDates[i] ?? finding.asOfDates[0]} />
+            <SourceTag
+              key={doc + i}
+              document={doc}
+              asOfDate={finding.asOfDates[i] ?? finding.asOfDates[0]}
+              documentId={documentIdByFilename?.get(doc)}
+            />
           ))}
         </div>
         {finding.entities.length ? (

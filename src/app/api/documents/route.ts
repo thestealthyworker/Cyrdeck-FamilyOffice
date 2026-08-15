@@ -32,6 +32,24 @@ async function markFailed(documentId: string, message: string): Promise<void> {
     .eq('id', documentId)
 }
 
+export async function GET(): Promise<NextResponse> {
+  const supabaseAdmin = getSupabaseAdmin()
+
+  const { data, error } = await supabaseAdmin
+    .from('documents')
+    .select('id, filename, doc_type, as_of_date, counterparty, extraction_status, extraction_error, created_at')
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    return NextResponse.json(
+      { error: 'Failed to list documents', detail: error.message },
+      { status: 500 },
+    )
+  }
+
+  return NextResponse.json({ documents: data ?? [] })
+}
+
 export async function POST(request: Request): Promise<NextResponse> {
   const supabaseAdmin = getSupabaseAdmin()
 

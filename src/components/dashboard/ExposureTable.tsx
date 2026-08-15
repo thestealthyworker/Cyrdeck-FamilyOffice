@@ -7,6 +7,7 @@ import type { EntityExposure } from "@/components/dashboard/types";
 
 interface ExposureTableProps {
   entities: EntityExposure[];
+  documentIdByFilename?: Map<string, string>;
 }
 
 type ViewMode = "company" | "fund";
@@ -20,7 +21,7 @@ type ViewMode = "company" | "fund";
  * renders a grand total — it groups by `entityType` instead and lets the reader pick the
  * level they want to see.
  */
-export function ExposureTable({ entities }: ExposureTableProps) {
+export function ExposureTable({ entities, documentIdByFilename }: ExposureTableProps) {
   const [view, setView] = useState<ViewMode>("company");
   const [openId, setOpenId] = useState<string | null>(null);
 
@@ -134,7 +135,12 @@ export function ExposureTable({ entities }: ExposureTableProps) {
                             </span>
                           ))}
                         </span>
-                        <SourceTag document={path.sourceDocument} asOfDate={path.asOfDate} confidence={path.confidence} />
+                        <SourceTag
+                          document={path.sourceDocument}
+                          asOfDate={path.asOfDate}
+                          confidence={path.confidence}
+                          documentId={path.sourceDocument ? documentIdByFilename?.get(path.sourceDocument) : undefined}
+                        />
                       </li>
                     ))}
                   </ul>

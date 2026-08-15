@@ -6,10 +6,11 @@ import type { Finding } from "@/components/dashboard/types";
 interface FindingCardProps {
   finding: Finding;
   index: number;
+  documentIdByFilename?: Map<string, string>;
 }
 
 /** A supporting finding — deliberately smaller and quieter than the hero convergence. */
-export function FindingCard({ finding, index }: FindingCardProps) {
+export function FindingCard({ finding, index, documentIdByFilename }: FindingCardProps) {
   return (
     <article className="finding-card" aria-labelledby={`finding-${finding.id}-heading`}>
       <div className="finding-card__top">
@@ -26,7 +27,12 @@ export function FindingCard({ finding, index }: FindingCardProps) {
       ) : null}
       <div className="finding-card__sources">
         {finding.sourceDocuments.map((doc, i) => (
-          <SourceTag key={doc + i} document={doc} asOfDate={finding.asOfDates[i] ?? finding.asOfDates[0]} />
+          <SourceTag
+            key={doc + i}
+            document={doc}
+            asOfDate={finding.asOfDates[i] ?? finding.asOfDates[0]}
+            documentId={documentIdByFilename?.get(doc)}
+          />
         ))}
       </div>
     </article>

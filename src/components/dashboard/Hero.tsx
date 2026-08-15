@@ -9,6 +9,7 @@ interface HeroProps {
   finding: Finding | undefined;
   entities: EntityExposure[];
   peBookValue: number;
+  documentIdByFilename?: Map<string, string>;
 }
 
 /**
@@ -18,7 +19,7 @@ interface HeroProps {
  * any other finding id (the engine can grow new rule types) degrades gracefully to a
  * generic, still fully data-driven hero instead of a broken diagram.
  */
-export function Hero({ finding, entities, peBookValue }: HeroProps) {
+export function Hero({ finding, entities, peBookValue, documentIdByFilename }: HeroProps) {
   if (!finding) {
     return (
       <EmptyState
@@ -30,13 +31,20 @@ export function Hero({ finding, entities, peBookValue }: HeroProps) {
 
   if (finding.id === "cross_asset_class") {
     const entity = pickHubEntity(finding, entities);
-    if (entity) return <ConvergenceHero finding={finding} entity={entity} />;
+    if (entity) return <ConvergenceHero finding={finding} entity={entity} documentIdByFilename={documentIdByFilename} />;
   }
 
   if (finding.id === "hidden_concentration") {
     const entity = entities.find((e) => e.name === finding.entities[0]);
-    return <ConcentrationHero finding={finding} entity={entity} peBookValue={peBookValue} />;
+    return (
+      <ConcentrationHero
+        finding={finding}
+        entity={entity}
+        peBookValue={peBookValue}
+        documentIdByFilename={documentIdByFilename}
+      />
+    );
   }
 
-  return <GenericFindingHero finding={finding} />;
+  return <GenericFindingHero finding={finding} documentIdByFilename={documentIdByFilename} />;
 }

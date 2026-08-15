@@ -897,6 +897,42 @@ section {
   color: var(--high-ink);
 }
 
+.source-tag--link {
+  cursor: pointer;
+  text-decoration: none;
+  transition: border-color var(--duration-fast) var(--ease-out-expo),
+    background var(--duration-fast) var(--ease-out-expo), transform var(--duration-fast) var(--ease-out-expo);
+}
+
+.source-tag--link:hover {
+  border-color: var(--signal);
+  background: var(--paper-raised);
+  transform: translateY(-1px);
+}
+
+.source-tag--link:hover .source-tag__doc {
+  color: var(--signal);
+}
+
+.source-tag--link:focus-visible {
+  outline: 2px solid var(--signal);
+  outline-offset: 2px;
+}
+
+.source-tag__open {
+  color: var(--signal);
+  font-size: var(--text-3xs);
+  opacity: 0;
+  transform: translateX(-2px);
+  transition: opacity var(--duration-fast) var(--ease-out-expo), transform var(--duration-fast) var(--ease-out-expo);
+}
+
+.source-tag--link:hover .source-tag__open,
+.source-tag--link:focus-visible .source-tag__open {
+  opacity: 1;
+  transform: translateX(0);
+}
+
 /* ============================================================
    Exposure table
    ============================================================ */
@@ -1350,6 +1386,135 @@ section {
 }
 
 /* ============================================================
+   Documents panel (audit surface)
+   ============================================================ */
+.documents-panel {
+  border: 1px solid var(--rule);
+  background: var(--paper-raised);
+}
+
+.documents-panel--empty {
+  padding: var(--space-md);
+  color: var(--ink-faint);
+  font-size: var(--text-sm);
+}
+
+.documents-panel__head,
+.documents-panel__row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1.3fr 0.9fr 1.4fr 0.6fr;
+  gap: var(--space-sm);
+  align-items: center;
+  padding: var(--space-sm) var(--space-md);
+}
+
+.documents-panel__head {
+  font-family: var(--font-mono);
+  font-size: var(--text-3xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-faint);
+  border-bottom: 2px solid var(--ink);
+  padding-top: var(--space-xs);
+  padding-bottom: var(--space-xs);
+}
+
+.documents-panel__row {
+  border-bottom: 1px solid var(--rule);
+  transition: background var(--duration-fast) ease;
+}
+
+.documents-panel__row:last-child {
+  border-bottom: none;
+}
+
+.documents-panel__row:hover {
+  background: var(--paper-sunken);
+}
+
+.documents-panel__col-name {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.documents-panel__col-type,
+.documents-panel__col-counterparty {
+  color: var(--ink-soft);
+  font-size: var(--text-sm);
+}
+
+.documents-panel__col-asof {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  color: var(--ink-faint);
+}
+
+.documents-panel__col-status {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.documents-panel__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  align-self: flex-start;
+  font-family: var(--font-mono);
+  font-size: var(--text-3xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-radius: 999px;
+  padding: 0.15rem 0.55rem;
+  background: var(--paper-sunken);
+  color: var(--ink-faint);
+}
+
+.documents-panel__status[data-status="extracted"] {
+  background: var(--medium-bg);
+  color: var(--medium-ink);
+}
+
+.documents-panel__status[data-status="processing"] {
+  background: var(--high-bg);
+  color: var(--high-ink);
+}
+
+.documents-panel__status[data-status="failed"] {
+  background: var(--critical-bg);
+  color: var(--critical-ink);
+}
+
+.documents-panel__error {
+  font-size: var(--text-3xs);
+  color: var(--critical-ink);
+  max-width: 22rem;
+}
+
+.documents-panel__open-link {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  color: var(--signal);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color var(--duration-fast) var(--ease-out-expo), transform var(--duration-fast) var(--ease-out-expo);
+}
+
+.documents-panel__open-link:hover {
+  border-color: var(--signal);
+  transform: translateY(-1px);
+}
+
+.documents-panel__open-link:focus-visible {
+  outline: 2px solid var(--signal);
+  outline-offset: 2px;
+}
+
+/* ============================================================
    Honesty footer
    ============================================================ */
 .honesty-footer {
@@ -1429,6 +1594,15 @@ section {
   .exposure-table__col-guarantee,
   .exposure-table__col-asof {
     text-align: left;
+  }
+
+  .documents-panel__head {
+    display: none;
+  }
+
+  .documents-panel__row {
+    grid-template-columns: 1fr;
+    gap: var(--space-3xs);
   }
 }
 
