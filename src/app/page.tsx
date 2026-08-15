@@ -36,7 +36,11 @@ export default function Home() {
   // in a way that is honest about being wrong.
   const naiveSum = useMemo(() => {
     if (exposure.state.status !== "ready") return undefined;
-    return exposure.state.data.entities.reduce((sum, e) => sum + e.directTotal + e.guaranteeNotional, 0);
+    // Guarantee notional is deliberately excluded. A guarantee is a contingent
+    // liability, not a balance — even a naive spreadsheet would not add it to a
+    // portfolio total, so including it would overstate the strawman rather than
+    // represent it fairly. The double-counting of look-through IS the point and stays.
+    return exposure.state.data.entities.reduce((sum, e) => sum + e.directTotal, 0);
   }, [exposure.state]);
 
   const asOfChips = useMemo(() => {
@@ -215,11 +219,12 @@ export default function Home() {
               <h5>A number that never existed</h5>
               <p className="honesty-footer__naive">{formatMoney(naiveSum)}</p>
               <p>
-                Naively summing every figure in the document set — funds and the companies
-                reached through them alike — produces this total. But the inputs span multiple
-                as-of dates and double-count by construction, so no such balance was ever true
-                at any single moment. Every figure above is instead tagged with the date it
-                actually describes.
+                Naively summing every position in the document set — funds and the companies
+                reached through them alike — produces this total, and it grows with every
+                document ingested. But the inputs span multiple as-of dates and double-count
+                by construction, so no such balance was ever true at any single moment.
+                Contingent guarantees are excluded here; they are not balances. Every figure
+                above is instead tagged with the date it actually describes.
               </p>
             </div>
             <div className="honesty-footer__block">
