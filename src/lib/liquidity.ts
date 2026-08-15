@@ -82,6 +82,14 @@ interface LiquidAccountRow {
   source_note: string | null
 }
 
+interface RootEntityRow {
+  id: string
+}
+
+interface AccountEntityRow {
+  id: string
+}
+
 interface LiquidAsset {
   label: string
   amount: number
@@ -134,36 +142,64 @@ async function fetchCommitments(): Promise<CommitmentRow[]> {
   return (data ?? []) as CommitmentRow[]
 }
 
-async function fetchLiquidAccount(): Promise<LiquidAccountRow> {
-  const { data: account, error: accountError } = await supabase
+/**
+ * Resolves the liquid book generically: every entity with `entity_type =
+ * 'account'` that the family-office root (`is_root = true`) reaches via a
+ * direct `holds_equity` edge is a custody account contributing to the liquid
+ * book. This supports N accounts (including zero, and including accounts
+ * added after this file was written) — no custodian name is hardcoded.
+ */
+async function fetchLiquidAccounts(): Promise<LiquidAccountRow[]> {
+  const { data: root, error: rootError } = await supabase
     .from('entities')
     .select('id')
-    .ilike('canonical_name', '%Ashworth%')
+    .eq('is_root', true)
     .limit(1)
     .maybeSingle()
 
-  if (accountError) {
-    throw new Error(`Failed to resolve Ashworth custody account entity: ${accountError.message}`)
+  if (rootError) {
+    throw new Error(`Failed to resolve family-office root entity: ${rootError.message}`)
   }
-  if (!account) {
-    throw new Error('No entity found matching the Ashworth custody account')
+  if (!root) {
+    throw new Error('No family-office root entity found (entities.is_root = true) — cannot resolve the liquid book')
+  }
+  const rootEntity = root as RootEntityRow
+
+  const { data: accounts, error: accountsError } = await supabase
+    .from('entities')
+    .select('id')
+    .eq('entity_type', 'account')
+
+  if (accountsError) {
+    throw new Error(`Failed to load custody account entities: ${accountsError.message}`)
+  }
+  const accountIds = ((accounts ?? []) as AccountEntityRow[]).map((account) => account.id)
+
+  if (accountIds.length === 0) {
+    throw new Error(
+      'No custody accounts found — add a custody statement (an entity_type=account entity with a holds_equity edge from the family-office root) to compute liquidity metrics.',
+    )
   }
 
-  const { data: edge, error: edgeError } = await supabase
+  const { data: edges, error: edgesError } = await supabase
     .from('edges')
     .select('value, as_of_date, source_note')
     .eq('edge_type', 'holds_equity')
-    .eq('to_entity_id', account.id)
-    .limit(1)
-    .maybeSingle()
+    .eq('from_entity_id', rootEntity.id)
+    .in('to_entity_id', accountIds)
 
-  if (edgeError) {
-    throw new Error(`Failed to load liquid account edge: ${edgeError.message}`)
+  if (edgesError) {
+    throw new Error(`Failed to load liquid account edges: ${edgesError.message}`)
   }
-  if (!edge) {
-    throw new Error('No holds_equity edge found for the Ashworth custody account')
+  const liquidAccounts = (edges ?? []) as LiquidAccountRow[]
+
+  if (liquidAccounts.length === 0) {
+    throw new Error(
+      'No holds_equity edges found from the family-office root to a custody account — add a custody statement to compute liquidity metrics.',
+    )
   }
-  return edge as LiquidAccountRow
+
+  return liquidAccounts
 }
 
 async function fetchFundNames(entityIds: string[]): Promise<Map<string, string>> {
@@ -184,9 +220,16 @@ async function fetchFundNames(entityIds: string[]): Promise<Map<string, string>>
 // ---------------------------------------------------------------------------
 
 /**
- * Parses the Ashworth custody `source_note` (e.g. "Cash $850k T+0, US LC equity
+ * Parses a custody account's `source_note` (e.g. "Cash $850k T+0, US LC equity
  * $1.95M, Intl dev equity $720k, IG bonds $680k") into typed line items so
- * differentiated stress shocks can be applied per asset class.
+ * differentiated stress shocks can be applied per asset class. Called once per
+ * custody account; the caller concatenates results across accounts so shocks
+ * still aggregate correctly for a liquid book spanning multiple custodians.
+ *
+ * Documented fallback: when an account's `source_note` is missing or does not
+ * parse into any recognizable line item, the account is NOT dropped — its
+ * whole balance is treated as unshocked cash (0% shock) rather than guessing
+ * at a composition split.
  */
 export function parseLiquidComposition(sourceNote: string | null, fallbackTotal: number): LiquidAsset[] {
   if (!sourceNote) {
@@ -408,15 +451,22 @@ function runMonteCarlo({ commitments, liquidAssets }: PathInputs): MonteCarloSum
 // ---------------------------------------------------------------------------
 
 export async function runLiquidityStressSimulation(): Promise<LiquidityResponse> {
-  const [commitments, liquidAccount] = await Promise.all([fetchCommitments(), fetchLiquidAccount()])
+  const [commitments, liquidAccounts] = await Promise.all([fetchCommitments(), fetchLiquidAccounts()])
 
   if (commitments.length === 0) {
     throw new Error('No commitments found — cannot compute undrawn total')
   }
 
   const undrawnTotal = commitments.reduce((sum, commitment) => sum + Number.parseFloat(commitment.undrawn), 0)
-  const liquidValue = Number.parseFloat(liquidAccount.value)
-  const liquidAssets = parseLiquidComposition(liquidAccount.source_note, liquidValue)
+
+  // Aggregate the liquid book across every custody account: sum edge values
+  // for the headline total, and concatenate each account's parsed
+  // composition so per-asset-class shocks still apply per account, then
+  // aggregate correctly across accounts.
+  const liquidValue = liquidAccounts.reduce((sum, account) => sum + Number.parseFloat(account.value), 0)
+  const liquidAssets = liquidAccounts.flatMap((account) =>
+    parseLiquidComposition(account.source_note, Number.parseFloat(account.value)),
+  )
 
   const fundNames = await fetchFundNames(commitments.map((commitment) => commitment.entity_id))
 
@@ -432,7 +482,10 @@ export async function runLiquidityStressSimulation(): Promise<LiquidityResponse>
   const monteCarlo = runMonteCarlo({ commitments, liquidAssets })
 
   const asOfDates = Array.from(
-    new Set([...commitments.map((commitment) => commitment.as_of_date), liquidAccount.as_of_date]),
+    new Set([
+      ...commitments.map((commitment) => commitment.as_of_date),
+      ...liquidAccounts.map((account) => account.as_of_date),
+    ]),
   ).sort()
 
   return {
