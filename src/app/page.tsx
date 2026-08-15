@@ -175,7 +175,7 @@ export default function Home() {
                     documentIdByFilename={documents.documentIdByFilename}
                   />
                 ))}
-                <LiquidityFindingCard index={restFindings.length + 2} />
+                <LiquidityFindingCard index={restFindings.length + 2} liquidity={liquidity} />
               </div>
             )}
           </section>
@@ -289,9 +289,16 @@ export default function Home() {
 }
 
 /** Presents the liquidity collision as a finding-shaped card so it reads alongside the others. */
-function LiquidityFindingCard({ index }: { index: number }) {
-  const liquidity = useLiquidity();
-
+// Takes the page's existing liquidity state rather than calling useLiquidity() again.
+// A second hook instance issued its own duplicate fetch AND sat outside the Refresh
+// button's reach, so this card never updated after an ingest.
+function LiquidityFindingCard({
+  index,
+  liquidity,
+}: {
+  index: number;
+  liquidity: ReturnType<typeof useLiquidity>;
+}) {
   if (liquidity.state.status === "loading") {
     return <StatusPanel kind="loading" label="the liquidity collision" />;
   }
