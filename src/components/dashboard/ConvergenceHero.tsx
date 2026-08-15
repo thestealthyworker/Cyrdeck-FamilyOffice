@@ -36,6 +36,10 @@ export function ConvergenceHero({ finding, entity }: ConvergenceHeroProps) {
   const lender = parentOf(debtPath) ?? "Whitmore Family Office";
   const guarantorIsEquityHolder = guarantor === equityHolder;
 
+  // SVG text does not wrap. Legal suffixes overflow the role boxes and add nothing
+  // at a glance — the full names are printed in the traversal paths below.
+  const short = (name: string) => name.replace(/,?\s+(L\.?P\.?|LLC|Inc\.?|Ltd\.?|Corp\.?)$/i, "");
+
   return (
     <div className="hero">
       <div className="hero__narrative">
@@ -65,18 +69,18 @@ export function ConvergenceHero({ finding, entity }: ConvergenceHeroProps) {
       </div>
 
       <div className="hero__diagram" role="img" aria-label={`Diagram: ${entityName} is held as equity inside ${equityHolder}, owes ${formatMoney(debt)} on an unsecured direct loan, and that same loan is guaranteed by ${guarantor}${guarantorIsEquityHolder ? " — the very fund whose equity is held" : ""}.`}>
-        <svg viewBox="0 0 620 460" className="convergence-svg" aria-hidden="true">
+        <svg viewBox="0 0 660 470" className="convergence-svg" aria-hidden="true">
           {/* connective lines drawn first, under the nodes */}
-          <path d="M 140 96 C 140 220, 300 260, 310 340" className="convergence-line convergence-line--equity" />
-          <path d="M 310 96 C 310 220, 310 260, 310 340" className="convergence-line convergence-line--debt" />
-          <path d="M 480 96 C 480 220, 320 260, 316 340" className="convergence-line convergence-line--guarantee" />
+          <path d="M 110 130 C 110 240, 300 285, 325 350" className="convergence-line convergence-line--equity" />
+          <path d="M 330 130 C 330 240, 330 285, 330 350" className="convergence-line convergence-line--debt" />
+          <path d="M 550 130 C 550 240, 360 285, 335 350" className="convergence-line convergence-line--guarantee" />
 
           {/* The "same fund" bridge is the insight itself, so it is drawn only when
               the guarantor really is the equity holder — never as decoration. */}
           {guarantorIsEquityHolder ? (
             <>
-              <path d="M 140 70 C 260 10, 400 10, 480 70" className="convergence-line convergence-line--bridge" />
-              <text x="310" y="34" textAnchor="middle" className="convergence-bridge-label">
+              <path d="M 110 52 C 210 6, 450 6, 550 52" className="convergence-line convergence-line--bridge" />
+              <text x="330" y="26" textAnchor="middle" className="convergence-bridge-label">
                 SAME FUND
               </text>
             </>
@@ -84,40 +88,40 @@ export function ConvergenceHero({ finding, entity }: ConvergenceHeroProps) {
 
           {/* role node: equity */}
           <g className="convergence-node convergence-node--equity">
-            <rect x="20" y="20" width="240" height="76" rx="4" />
-            <text x="40" y="45" className="convergence-node__role">EQUITY — HELD INSIDE</text>
-            <text x="40" y="68" className="convergence-node__label">{equityHolder}</text>
-            <text x="40" y="86" className="convergence-node__amount">{formatMoney(equity)}</text>
+            <rect x="10" y="52" width="200" height="78" rx="4" />
+            <text x="26" y="76" className="convergence-node__role">EQUITY — HELD INSIDE</text>
+            <text x="26" y="99" className="convergence-node__label">{short(equityHolder)}</text>
+            <text x="26" y="119" className="convergence-node__amount">{formatMoney(equity)}</text>
           </g>
 
           {/* role node: debt */}
           <g className="convergence-node convergence-node--debt">
-            <rect x="190" y="20" width="240" height="76" rx="4" />
-            <text x="210" y="45" className="convergence-node__role">DEBT — UNSECURED, DIRECT</text>
-            <text x="210" y="68" className="convergence-node__label">{lender}</text>
-            <text x="210" y="86" className="convergence-node__amount">{formatMoney(debt)}</text>
+            <rect x="230" y="52" width="200" height="78" rx="4" />
+            <text x="246" y="76" className="convergence-node__role">DEBT — UNSECURED</text>
+            <text x="246" y="99" className="convergence-node__label">{short(lender)}</text>
+            <text x="246" y="119" className="convergence-node__amount">{formatMoney(debt)}</text>
           </g>
 
           {/* role node: guarantee */}
           <g className="convergence-node convergence-node--guarantee">
-            <rect x="360" y="20" width="240" height="76" rx="4" />
-            <text x="380" y="45" className="convergence-node__role">GUARANTEE — WRITTEN BY</text>
-            <text x="380" y="68" className="convergence-node__label">{guarantor}</text>
-            <text x="380" y="86" className="convergence-node__amount">
-              {guarantorIsEquityHolder ? "← the same fund as the equity" : formatMoney(entity?.guaranteeNotional ?? 0)}
+            <rect x="450" y="52" width="200" height="78" rx="4" />
+            <text x="466" y="76" className="convergence-node__role">GUARANTEE — WRITTEN BY</text>
+            <text x="466" y="99" className="convergence-node__label">{short(guarantor)}</text>
+            <text x="466" y="119" className="convergence-node__amount">
+              {guarantorIsEquityHolder ? "↑ same fund as the equity" : formatMoney(entity?.guaranteeNotional ?? 0)}
             </text>
           </g>
 
           {/* convergence node */}
           <g className="convergence-node convergence-node--target">
-            <rect x="180" y="340" width="260" height="92" rx="4" />
-            <text x="310" y="371" textAnchor="middle" className="convergence-node__target-label">
-              {entityName.toUpperCase()}
+            <rect x="200" y="350" width="260" height="92" rx="4" />
+            <text x="330" y="381" textAnchor="middle" className="convergence-node__target-label">
+              {short(entityName).toUpperCase()}
             </text>
-            <text x="310" y="396" textAnchor="middle" className="convergence-node__target-sub">
+            <text x="330" y="406" textAnchor="middle" className="convergence-node__target-sub">
               one credit event
             </text>
-            <text x="310" y="418" textAnchor="middle" className="convergence-node__target-amount">
+            <text x="330" y="428" textAnchor="middle" className="convergence-node__target-amount">
               {formatMoney(total)} affected
             </text>
           </g>
