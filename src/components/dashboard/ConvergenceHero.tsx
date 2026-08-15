@@ -22,9 +22,19 @@ export function ConvergenceHero({ finding, entity }: ConvergenceHeroProps) {
   const debtPath = entity?.paths.find((p) => p.hops.some((h) => h.edgeType === "holds_debt"));
   const guaranteePath = entity?.paths.find((p) => p.hops.some((h) => h.edgeType === "guarantees"));
 
-  const fundName =
-    equityPath?.hops.find((h) => h.edgeType === "holds_equity")?.from ?? "Kestrel Ventures Fund III";
   const entityName = entity?.name ?? "Aurex Data Centers";
+
+  // The counterparty that matters is the one immediately above the entity, not the
+  // root the path started from. Taking the first hop would label every role
+  // "Whitmore Family Office" and bury the finding: the point is that the equity
+  // holder and the guarantor are the SAME fund.
+  const parentOf = (path: ExposurePath | undefined) =>
+    path?.hops.find((h) => h.to === entityName)?.from ?? path?.hops.at(-1)?.from;
+
+  const equityHolder = parentOf(equityPath) ?? "Kestrel Ventures Fund III";
+  const guarantor = parentOf(guaranteePath) ?? equityHolder;
+  const lender = parentOf(debtPath) ?? "Whitmore Family Office";
+  const guarantorIsEquityHolder = guarantor === equityHolder;
 
   return (
     <div className="hero">
@@ -54,43 +64,48 @@ export function ConvergenceHero({ finding, entity }: ConvergenceHeroProps) {
         ) : null}
       </div>
 
-      <div className="hero__diagram" role="img" aria-label={`Diagram: ${entityName} is held as equity inside ${fundName}, borrows $2,000,000 unsecured, and that same loan is guaranteed by ${fundName} — the fund whose equity is held.`}>
+      <div className="hero__diagram" role="img" aria-label={`Diagram: ${entityName} is held as equity inside ${equityHolder}, owes ${formatMoney(debt)} on an unsecured direct loan, and that same loan is guaranteed by ${guarantor}${guarantorIsEquityHolder ? " — the very fund whose equity is held" : ""}.`}>
         <svg viewBox="0 0 620 460" className="convergence-svg" aria-hidden="true">
           {/* connective lines drawn first, under the nodes */}
           <path d="M 140 96 C 140 220, 300 260, 310 340" className="convergence-line convergence-line--equity" />
           <path d="M 310 96 C 310 220, 310 260, 310 340" className="convergence-line convergence-line--debt" />
           <path d="M 480 96 C 480 220, 320 260, 316 340" className="convergence-line convergence-line--guarantee" />
 
-          {/* the "same fund" bridge — the insight, drawn as a deliberate arc */}
-          <path d="M 140 70 C 260 10, 400 10, 480 70" className="convergence-line convergence-line--bridge" />
-          <text x="310" y="34" textAnchor="middle" className="convergence-bridge-label">
-            SAME FUND
-          </text>
+          {/* The "same fund" bridge is the insight itself, so it is drawn only when
+              the guarantor really is the equity holder — never as decoration. */}
+          {guarantorIsEquityHolder ? (
+            <>
+              <path d="M 140 70 C 260 10, 400 10, 480 70" className="convergence-line convergence-line--bridge" />
+              <text x="310" y="34" textAnchor="middle" className="convergence-bridge-label">
+                SAME FUND
+              </text>
+            </>
+          ) : null}
 
           {/* role node: equity */}
           <g className="convergence-node convergence-node--equity">
             <rect x="20" y="20" width="240" height="76" rx="4" />
-            <text x="40" y="45" className="convergence-node__role">EQUITY</text>
-            <text x="40" y="68" className="convergence-node__label">{fundName}</text>
+            <text x="40" y="45" className="convergence-node__role">EQUITY — HELD INSIDE</text>
+            <text x="40" y="68" className="convergence-node__label">{equityHolder}</text>
             <text x="40" y="86" className="convergence-node__amount">{formatMoney(equity)}</text>
           </g>
 
           {/* role node: debt */}
           <g className="convergence-node convergence-node--debt">
             <rect x="190" y="20" width="240" height="76" rx="4" />
-            <text x="210" y="45" className="convergence-node__role">DEBT — UNSECURED</text>
-            <text x="210" y="68" className="convergence-node__label">
-              {debtPath?.hops[0]?.from ?? "Blackfin direct loan"}
-            </text>
+            <text x="210" y="45" className="convergence-node__role">DEBT — UNSECURED, DIRECT</text>
+            <text x="210" y="68" className="convergence-node__label">{lender}</text>
             <text x="210" y="86" className="convergence-node__amount">{formatMoney(debt)}</text>
           </g>
 
           {/* role node: guarantee */}
           <g className="convergence-node convergence-node--guarantee">
             <rect x="360" y="20" width="240" height="76" rx="4" />
-            <text x="380" y="45" className="convergence-node__role">GUARANTEE ON THAT LOAN</text>
-            <text x="380" y="68" className="convergence-node__label">{fundName}</text>
-            <text x="380" y="86" className="convergence-node__amount">— same fund as equity —</text>
+            <text x="380" y="45" className="convergence-node__role">GUARANTEE — WRITTEN BY</text>
+            <text x="380" y="68" className="convergence-node__label">{guarantor}</text>
+            <text x="380" y="86" className="convergence-node__amount">
+              {guarantorIsEquityHolder ? "← the same fund as the equity" : formatMoney(entity?.guaranteeNotional ?? 0)}
+            </text>
           </g>
 
           {/* convergence node */}
