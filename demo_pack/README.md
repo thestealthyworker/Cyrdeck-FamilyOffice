@@ -134,6 +134,25 @@ with the existing Harbor View Terrace finding pattern.
 
 ---
 
+## 6. `06_thorne_capital_direct_lending_schedule.xlsx`
+
+**Already ingested.** Unlike files 1–5, this one has been through the live pipeline
+already and its edges are in the database — it is kept here for reproducibility, not as
+something to upload again.
+
+Thorne Capital Partners senior direct lending schedule, as-of **2026-07-15**. Two
+facilities: $1,800,000 to "Vertexa Software, **Incorporated**" (a third spelling of an
+existing node) and $2,350,000 to Calder Marine Terminals LLC.
+
+It was the proof that ingestion works on a document the system had never seen: entity
+resolution folded the new spelling onto the existing Vertexa entity, and the
+`cross_asset_class` rule fired on Vertexa unprompted — a finding nobody wrote, on a
+company that had been equity-only until the file landed.
+
+Re-uploading it would duplicate those edges. Upload files 1–5 instead.
+
+---
+
 ## Vocabulary variation (deliberate, cross-document)
 
 | Concept | Doc 1 (Ridgeline) | Doc 2 (Calder/Ironvale) | Doc 3 (Ironvale Credit) | Doc 4 (Brightwater) | Doc 5 (Gladstone) |
